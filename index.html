@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Auburn University Department of Music</title>
+  <meta name="description" content="Explore Auburn University's Department of Music — programs, ensembles, and how to apply.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+
+    <header class="site-header">
+      <div class="brand" id="brand-home" role="button" aria-label="Go to home screen">
+        <div class="brand-mark">AU</div>
+        <div class="brand-text">
+          <h1 id="dept-name">Department of Music</h1>
+          <div class="school">Auburn University</div>
+        </div>
+      </div>
+      <a class="btn btn-primary" href="#" data-cta-url data-cta-label target="_blank" rel="noopener"></a>
+    </header>
+
+    <!-- Hub / main menu -->
+    <section class="view active" id="view-hub">
+      <div class="hub-hero">
+        <h2 id="hero-title"></h2>
+        <p id="hero-sub"></p>
+      </div>
+      <div class="program" id="program-list"></div>
+    </section>
+
+    <!-- Area detail -->
+    <section class="view" id="view-area">
+      <div id="area-content"></div>
+    </section>
+
+    <footer class="site-footer">
+      <button class="btn btn-text" id="back-to-hub">Back to home</button>
+      <span class="footer-note">Auburn University Department of Music</span>
+    </footer>
+
+    <!-- Idle attract screen -->
+    <div class="attract" id="attract">
+      <div class="brand-mark">AU</div>
+      <h2 class="serif">Department of Music</h2>
+      <p>Touch anywhere to explore programs &amp; ensembles</p>
+    </div>
+
+    <!-- Lightbox for photos / video -->
+    <div class="lightbox" id="lightbox">
+      <button class="lightbox-close" id="lightbox-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div id="lightbox-body"></div>
+    </div>
+
+  </div>
+
+  <script src="js/vendor/qrcode.js"></script>
+  <script src="data/content.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
