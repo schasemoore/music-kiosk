@@ -44,6 +44,7 @@
   const previewTagline = document.getElementById("preview-tagline");
   const previewFacts = document.getElementById("preview-facts");
   const previewLearnMore = document.getElementById("preview-learn-more");
+  const previewApply = document.getElementById("preview-apply");
 
   // ---------------------------------------------------------------- media loading helpers
   // Try an image, then a video, then fall back to a themed color card. Used
@@ -100,6 +101,15 @@
       el.textContent = cta.label;
     });
 
+    // Per-area CMS override (area.cta.url / area.cta.label, both optional) —
+    // falls back to the site-wide Apply Button / QR Link above whenever
+    // either half is left blank. Used by the tile pill, the preview
+    // overlay's Apply button, and the full area page's ticket + QR.
+    function resolveCta(area) {
+      const override = (area && area.cta) || {};
+      return { url: override.url || cta.url, label: override.label || cta.label };
+    }
+
     // -------------------------------------------------------------- render hub (edge-to-edge poster wall)
 
     function renderHub() {
@@ -108,6 +118,11 @@
           const sizeClass = a.size === "large" ? "size-large" : "size-normal";
           const driftDur = (16 + Math.random() * 10).toFixed(1);
           const driftDelay = (-Math.random() * driftDur).toFixed(1);
+          // The tile pill keeps its own short default ("Apply") regardless of
+          // the site-wide cta.label — same rationale as always (space), but
+          // now an area can override it via area.cta.label if it wants to.
+          const tileCtaUrl = (a.cta && a.cta.url) || cta.url;
+          const tileCtaLabel = (a.cta && a.cta.label) || "Apply";
           return `
         <div class="area-tile ${sizeClass}" data-area="${a.id}" style="--tile-color:${a.theme};--drift-dur:${driftDur}s;--drift-delay:${driftDelay}s">
           <button class="tile-open" data-area="${a.id}" aria-label="Preview ${a.name}">
@@ -118,7 +133,7 @@
               <span class="tagline">${a.tagline}</span>
             </span>
           </button>
-          <a class="tile-cta btn" href="${cta.url}" data-cta-url target="_blank" rel="noopener" aria-label="Apply to ${a.name}">Apply</a>
+          <a class="tile-cta btn" href="${tileCtaUrl}" target="_blank" rel="noopener" aria-label="Apply to ${a.name}">${tileCtaLabel}</a>
         </div>`;
         })
         .join("");
@@ -365,6 +380,9 @@
         closePreview();
         showArea(area.id);
       };
+      const previewCta = resolveCta(area);
+      previewApply.href = previewCta.url;
+      previewApply.textContent = previewCta.label;
 
       // Paint the same photo/gradient the clone is about to fly with, so the
       // hand-off from clone to real overlay is seamless once it lands.
@@ -432,6 +450,7 @@
     function showArea(id) {
       const area = areas.find((a) => a.id === id);
       if (!area) return;
+      const areaCta = resolveCta(area);
 
       areaContent.style.setProperty("--theme", area.theme);
       areaContent.innerHTML = `
@@ -452,7 +471,7 @@
             <div class="ticket-main">
               <h3>Apply to ${area.name}</h3>
               <p>Scan the code, or tap the button up top, to start your Auburn Music application.</p>
-              <a class="btn btn-primary" href="${cta.url}" data-cta-url data-cta-label></a>
+              <a class="btn btn-primary" href="${areaCta.url}">${areaCta.label}</a>
             </div>
             <div class="ticket-stub">
               <div id="qr-slot"></div>
@@ -461,8 +480,6 @@
           </div>
         </div>
       `;
-
-      document.querySelectorAll("#area-content [data-cta-label]").forEach((el) => (el.textContent = cta.label));
 
       // Hero media: prefer a dedicated hero shot, fall back to the first gallery photo, else the themed gradient stays.
       probeImage(area.hero || (area.photos && area.photos[0])).then((ok) => {
@@ -485,7 +502,7 @@
         wall.appendChild(galleryCard("video", area.video, `${area.name} — In performance`, area.poster));
       }
 
-      renderQR(document.getElementById("qr-slot"), cta.url);
+      renderQR(document.getElementById("qr-slot"), areaCta.url);
 
       viewArea.scrollTop = 0;
       setActiveView("area");

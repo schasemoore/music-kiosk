@@ -62,15 +62,23 @@ exactly this shape of site (static, GitHub + Netlify, one JSON file to
 edit). A fully custom admin page was the explicit alternative considered
 and declined.
 
-## Why the tile CTA pill says "Apply" not the configured `cta.label`
+## Why the tile CTA pill defaults to "Apply" not the configured `cta.label`
 
 `cta.label` (default "Apply now") is used everywhere else. The tile's own
-corner pill hardcodes the shorter "Apply" because the full label didn't fit
-without either enlarging the tile-text's reserved padding a lot (crowding
-the name/tagline) or shrinking the pill's font past comfortable tap-target
-size. Deliberate trade-off, not an oversight — if `cta.label` changes to
-something even longer, this won't automatically break, since the tile pill
-doesn't read from it at all.
+corner pill defaults to the shorter "Apply" because the full label didn't
+fit without either enlarging the tile-text's reserved padding a lot
+(crowding the name/tagline) or shrinking the pill's font past comfortable
+tap-target size. Deliberate trade-off, not an oversight — if `cta.label`
+changes to something even longer, this won't automatically break, since the
+tile pill doesn't read from it at all.
+
+Later addition: each area can now set its own `cta.url`/`cta.label`
+override (`reference/content-schema.md`) — if an area sets a custom label,
+the tile pill *does* show that (an editor asking for a specific label is
+opting in, unlike the generic site-wide `cta.label`), but the "Apply"
+fallback above is unchanged when no override is set. Same override cascades
+to that area's preview overlay, full page, and QR code, so a program can be
+pointed at its own application link without forking the whole flow.
 
 ## Colors are exactly Auburn's 8 official brand colors — no others
 

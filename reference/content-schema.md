@@ -14,8 +14,8 @@ matched, not validated against each other).
 | `logo` | path | Header + splash-screen logo image |
 | `department.name` | string | Header text ("Department of Music") |
 | `department.heroTitle` / `heroSub` | string | Home screen headline + subhead |
-| `cta.url` | string (URL) | **Currently a placeholder** (`https://your-link-here.auburn.edu/apply`) — every Apply button and QR code on the whole site reads this one field |
-| `cta.label` | string | Text on the full-size Apply buttons (the tile's own CTA pill is hardcoded "Apply" regardless — see `reference/design-system.md` tile section) |
+| `cta.url` | string (URL) | **Currently a placeholder** (`https://your-link-here.auburn.edu/apply`) — the site-wide fallback every Apply button and QR code reads, unless an area sets its own `areas[].cta` override (below) |
+| `cta.label` | string | Text on the full-size Apply buttons (the tile's own CTA pill defaults to "Apply" regardless — see `reference/design-system.md` tile section) |
 | `idleTimeoutMs` | int | Ms of no touch before returning to the splash screen (currently 90000) |
 | `splashIntervalMs` | int | Ms each splash slide stays up (currently 7000) |
 | `galleryCaptions` | string[] | Cycled across each area's gallery photos in order (photo 1 → caption[0], photo 2 → caption[1], wraps if more photos than captions) |
@@ -39,6 +39,7 @@ matched, not validated against each other).
   "name": "Brass",                                 // Tile + page headline
   "tagline": "Trumpet, horn, trombone, ...",        // One line, shown on tile, preview, and page
   "size": "normal",                                 // "normal" or "large" — see "Hub wall layout" below
+  "cta": { "url": "...", "label": "..." },          // Optional, both sub-fields optional — see "Apply button override" below
   "icon": "brass",                                  // Must be one of the 8 keys below
   "theme": "#ffc044",                               // Must be one of the 8 official Auburn colors
   "description": "...",                             // 1-2 sentences, area page hero
@@ -71,6 +72,21 @@ thing to know: if the total "cell count" (`4 × large-count + normal-count`)
 isn't a multiple of 4, the last row ends with an empty gap — this is most
 visible when a `"large"` area isn't first in the list, so if you want a
 perfectly gap-free wall, put your large area(s) toward the top of the order.
+
+### Apply button override: `cta`
+
+Optional, and both `url` and `label` inside it are independently optional —
+leave the whole field out, or leave either sub-field blank, to fall back to
+the site-wide `cta.url`/`cta.label` at the top of this file. When set, it
+overrides **everywhere this area's Apply link appears**: the home screen
+tile's corner pill, the "Apply now" button in its full-screen preview
+overlay, and the "Apply now" button + QR code on its full area page — all
+four read the same resolved value (`resolveCta(area)` in `js/app.js`), so a
+program can point at its own application link without the tile, preview,
+and page disagreeing with each other. The tile pill's own short default
+("Apply", not the longer site-wide `cta.label`) only applies when `label`
+is left blank — set a `label` here and the tile pill uses it verbatim, so
+keep it short enough to fit a small corner button.
 
 ### Preview playback mode: `previewPlayback`
 

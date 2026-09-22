@@ -103,6 +103,15 @@ collections:
                   - { label: "Large (flagship)", value: "large" }
                 default: "normal"
                 hint: "Large tiles take up 4x the space of a normal one on the home screen wall. Drag areas above to reorder them — the wall packs itself around whichever sizes you pick, in that order, so more than one large tile is fine too."
+              - label: "Apply button override (optional)"
+                name: "cta"
+                widget: "object"
+                required: false
+                collapsed: true
+                hint: "Leave both blank to use the site-wide Apply Button / QR Link above for this area. Fill in either one to send this area's tile, its full-screen preview, and its page (including the QR code) somewhere else and/or show different button text."
+                fields:
+                  - { label: "URL", name: "url", widget: "string", required: false }
+                  - { label: "Button label", name: "label", widget: "string", required: false, hint: "The tile's own small corner button stays \"Apply\" unless you set this." }
               - label: "Icon"
                 name: "icon"
                 widget: "select"
