@@ -12,8 +12,36 @@
     ensemble: '<circle cx="8" cy="8" r="3" stroke-width="2" fill="none"/><circle cx="17" cy="9" r="2.5" stroke-width="2" fill="none"/><path d="M2 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M15 19v-1a4 4 0 0 1 4-4h.5a3 3 0 0 1 2.5 4.5" stroke-width="2" fill="none" stroke-linecap="round"/>',
   };
 
+  // Hand-placed hub wall layout, keyed by area id (not array order) — the
+  // asymmetric "poster wall" grid. Adding/removing an area means updating
+  // this map and its mirror in css/styles.css (.area-tile[data-area=...]).
+  const WALL_LAYOUT = {
+    "bands-ensembles": { col: "1 / 7", row: "1 / 3" },
+    brass: { col: "7 / 10", row: "1" },
+    voice: { col: "10 / 13", row: "1" },
+    "woodwind-percussion": { col: "7 / 10", row: "2" },
+    piano: { col: "10 / 13", row: "2" },
+    "commercial-music": { col: "1 / 4", row: "3" },
+    "composition-technology": { col: "4 / 8", row: "3" },
+    "music-education": { col: "8 / 13", row: "3" },
+  };
+
+  // Attract-screen panel wall — a different asymmetric split than the hub
+  // wall (different panel count/spans) so it doesn't read as a rerun of it.
+  const ATTRACT_PANELS = [
+    { col: "1 / 9", row: "1 / 3" },
+    { col: "9 / 13", row: "1" },
+    { col: "9 / 13", row: "2" },
+    { col: "1 / 6", row: "3" },
+    { col: "6 / 13", row: "3" },
+  ];
+
   function icon(name) {
     return `<svg viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ICONS.ensemble}</svg>`;
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
   const viewHub = document.getElementById("view-hub");
@@ -24,7 +52,6 @@
   const lightboxEl = document.getElementById("lightbox");
   const lightboxBody = document.getElementById("lightbox-body");
   const previewEl = document.getElementById("area-preview");
-  const previewPanel = document.getElementById("preview-panel");
   const previewMedia = document.getElementById("preview-media");
   const previewEyebrow = document.getElementById("preview-eyebrow");
   const previewName = document.getElementById("preview-name");
@@ -87,13 +114,17 @@
       el.textContent = cta.label;
     });
 
-    // -------------------------------------------------------------- render hub (saturated poster-tile stage)
+    // -------------------------------------------------------------- render hub (edge-to-edge poster wall)
 
     function renderHub() {
       programList.innerHTML = areas
-        .map(
-          (a) => `
-        <div class="area-tile" style="--tile-color:${a.theme}">
+        .map((a) => {
+          const layout = WALL_LAYOUT[a.id];
+          const gridStyle = layout ? `grid-column:${layout.col};grid-row:${layout.row};` : "";
+          const driftDur = (16 + Math.random() * 10).toFixed(1);
+          const driftDelay = (-Math.random() * driftDur).toFixed(1);
+          return `
+        <div class="area-tile" data-area="${a.id}" style="--tile-color:${a.theme};${gridStyle}--drift-dur:${driftDur}s;--drift-delay:${driftDelay}s">
           <button class="tile-open" data-area="${a.id}" aria-label="Preview ${a.name}">
             <svg class="ghost-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[a.icon] || ICONS.ensemble}</svg>
             <span class="tile-scrim"></span>
@@ -103,8 +134,8 @@
             </span>
           </button>
           <a class="tile-cta btn" href="${cta.url}" data-cta-url target="_blank" rel="noopener" aria-label="Apply to ${a.name}">Apply</a>
-        </div>`
-        )
+        </div>`;
+        })
         .join("");
 
       programList.querySelectorAll(".tile-open").forEach((tile) => {
@@ -174,7 +205,7 @@
       return wrap;
     }
 
-    // -------------------------------------------------------------- tile preview modal (carousel + quick facts)
+    // -------------------------------------------------------------- tile preview: pop-out + carousel + quick facts
 
     function buildMediaList(area) {
       const items = [];
@@ -256,35 +287,137 @@
       if (firstVideo) firstVideo.play().catch(() => {});
     }
 
+    // ---- FLIP pop-out: a fixed-position clone flies from a tile's exact
+    // rect to fill the viewport (or back again), via the Web Animations API
+    // animating only `transform` (a matrix mapping the clone's box from its
+    // start rect onto its end rect) — never width/height, so it stays off
+    // the layout thread. Used by both openPreview (tile -> fullscreen) and
+    // closePreview (fullscreen -> tile).
+
+    function createVisualClone(photoSrc, themeColor) {
+      const clone = document.createElement("div");
+      clone.className = "pop-clone";
+      if (photoSrc) {
+        const img = document.createElement("img");
+        img.src = photoSrc;
+        img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;";
+        clone.appendChild(img);
+      } else {
+        const grad = document.createElement("div");
+        grad.style.cssText = `position:absolute;inset:0;background-image:linear-gradient(150deg, color-mix(in srgb, ${themeColor} 65%, white 12%), ${themeColor} 55%, color-mix(in srgb, ${themeColor} 82%, black 30%));`;
+        clone.appendChild(grad);
+      }
+      return clone;
+    }
+
+    function flipFly(fromRect, toRect, photoSrc, themeColor, onLanded) {
+      const clone = createVisualClone(photoSrc, themeColor);
+      clone.style.position = "fixed";
+      clone.style.left = fromRect.left + "px";
+      clone.style.top = fromRect.top + "px";
+      clone.style.width = fromRect.width + "px";
+      clone.style.height = fromRect.height + "px";
+      clone.style.transformOrigin = "0 0";
+      clone.style.overflow = "hidden";
+      clone.style.zIndex = "120";
+      clone.style.willChange = "transform";
+      document.body.appendChild(clone);
+
+      const sx = toRect.width / fromRect.width;
+      const sy = toRect.height / fromRect.height;
+      const tx = toRect.left - fromRect.left;
+      const ty = toRect.top - fromRect.top;
+
+      const anim = clone.animate(
+        [{ transform: "matrix(1,0,0,1,0,0)" }, { transform: `matrix(${sx},0,0,${sy},${tx},${ty})` }],
+        { duration: 480, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" }
+      );
+      anim.onfinish = () => {
+        clone.remove();
+        if (onLanded) onLanded();
+      };
+    }
+
+    let currentPreviewArea = null;
+
     function openPreview(id) {
       const area = areas.find((a) => a.id === id);
       if (!area) return;
+      currentPreviewArea = area;
 
-      previewPanel.style.setProperty("--theme", area.theme);
+      const tileEl = programList.querySelector(`.area-tile[data-area="${id}"]`);
+      const photoImg = tileEl && tileEl.querySelector(".tile-photo");
+      const photoSrc = photoImg ? photoImg.src : null;
+
+      previewEl.style.setProperty("--theme", area.theme);
       previewEyebrow.textContent = department.name;
       previewName.textContent = area.name;
       previewTagline.textContent = area.tagline;
       previewFacts.innerHTML = area.facts.map((f) => `<li>${f}</li>`).join("");
-      previewMedia.innerHTML = `<div class="preview-slide active"><div class="slide-fallback-icon">${icon(area.icon)}</div></div>`;
       previewLearnMore.onclick = () => {
         closePreview();
         showArea(area.id);
       };
 
-      previewEl.classList.add("active");
+      // Paint the same photo/gradient the clone is about to fly with, so the
+      // hand-off from clone to real overlay is seamless once it lands.
+      previewMedia.innerHTML = `<div class="preview-slide active">${
+        photoSrc ? `<img src="${photoSrc}" alt="${area.name}">` : `<div class="slide-fallback-icon">${icon(area.icon)}</div>`
+      }</div>`;
+      previewEl.classList.remove("info-visible");
 
-      resolveMediaList(buildMediaList(area)).then((items) => renderPreviewCarousel(area, items));
+      const reveal = () => {
+        // No transition on this reveal — the clone already carried the
+        // motion, so the modal itself should just appear instantly under it.
+        previewEl.style.transition = "none";
+        previewEl.classList.add("active");
+        void previewEl.offsetWidth;
+        previewEl.style.transition = "";
+        requestAnimationFrame(() => previewEl.classList.add("info-visible"));
+        resolveMediaList(buildMediaList(area)).then((items) => renderPreviewCarousel(area, items));
+      };
+
+      if (tileEl && !prefersReducedMotion()) {
+        const fromRect = tileEl.getBoundingClientRect();
+        const toRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+        flipFly(fromRect, toRect, photoSrc, area.theme, reveal);
+      } else {
+        reveal();
+      }
     }
 
     function closePreview() {
-      previewEl.classList.remove("active");
+      const area = currentPreviewArea;
+      currentPreviewArea = null;
+      if (!area) {
+        previewEl.classList.remove("active", "info-visible");
+        return;
+      }
+
+      const tileEl = programList.querySelector(`.area-tile[data-area="${area.id}"]`);
+      const activeSlide = previewMedia.querySelector(".preview-slide.active");
+      let photoSrc = null;
+      if (activeSlide) {
+        const img = activeSlide.querySelector("img");
+        const video = activeSlide.querySelector("video");
+        photoSrc = img ? img.src : video ? video.poster || null : null;
+      }
       previewMedia.querySelectorAll("video").forEach((v) => v.pause());
+      previewEl.classList.remove("info-visible");
+
+      if (tileEl && !prefersReducedMotion()) {
+        setTimeout(() => {
+          const fromRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+          const toRect = tileEl.getBoundingClientRect();
+          flipFly(fromRect, toRect, photoSrc, area.theme, () => {});
+          previewEl.classList.remove("active");
+        }, 150);
+      } else {
+        previewEl.classList.remove("active");
+      }
     }
 
     document.getElementById("preview-close").addEventListener("click", closePreview);
-    previewEl.addEventListener("click", (e) => {
-      if (e.target === previewEl) closePreview();
-    });
 
     // -------------------------------------------------------------- render area (media-led)
 
@@ -398,52 +531,109 @@
       setActiveView("hub");
     });
 
-    // -------------------------------------------------------------- splash slideshow (attract screen)
+    // -------------------------------------------------------------- attract screen: cinematic multi-panel wall
 
     const slideshowEl = document.getElementById("splash-slideshow");
     const attractCaption = document.getElementById("attract-caption");
-    let slideIndex = 0;
-    let slideTimer = null;
+    let attractTimers = [];
+    let attractPanelsReady = false;
+    let captionTimer = null;
 
-    function renderSlideshow() {
-      slideshowEl.innerHTML = splash
-        .map(
-          (s, i) => `
-        <div class="slide${i === 0 ? " active" : ""}" data-index="${i}" style="--slide-color:${s.theme}">
-          <div class="slide-fallback"></div>
-        </div>`
-        )
-        .join("");
+    function shuffle(arr) {
+      const out = arr.slice();
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    }
 
-      splash.forEach((s, i) => {
-        const slideEl = slideshowEl.querySelector(`.slide[data-index="${i}"]`);
-        probeImage(s.media).then((ok) => {
-          if (!ok) return;
-          const img = document.createElement("img");
-          img.className = "slide-media";
-          img.alt = s.caption;
-          img.src = s.media;
-          slideEl.prepend(img);
-        });
+    // Pool every image the app already knows about — splash slides plus
+    // every area's hero/gallery photos — so the attract wall has real
+    // variety without needing dedicated splash assets authored for it.
+    function buildImagePool() {
+      const pool = [];
+      splash.forEach((s) => {
+        if (s.media) pool.push({ src: s.media, theme: s.theme });
+      });
+      areas.forEach((a) => {
+        if (a.hero) pool.push({ src: a.hero, theme: a.theme });
+        (a.photos || []).forEach((src) => pool.push({ src, theme: a.theme }));
+      });
+      return pool;
+    }
+
+    async function buildAttractWall() {
+      const pool = buildImagePool();
+      const resolved = [];
+      for (const item of pool) {
+        const ok = await probeImage(item.src);
+        if (ok) resolved.push(item);
+      }
+      const panelCount = ATTRACT_PANELS.length;
+      const shuffled = shuffle(resolved.length ? resolved : [{ src: null, theme: "#0b2341" }]);
+      const buckets = Array.from({ length: panelCount }, () => []);
+      shuffled.forEach((item, i) => buckets[i % panelCount].push(item));
+      buckets.forEach((b, i) => {
+        if (!b.length) b.push(shuffled[i % shuffled.length]);
+      });
+
+      slideshowEl.innerHTML = ATTRACT_PANELS.map((p, i) => {
+        const slides = buckets[i]
+          .map(
+            (item, si) => `
+          <div class="panel-slide${si === 0 ? " active" : ""}" style="--slide-color:${item.theme}">
+            ${
+              item.src
+                ? `<img class="panel-media" alt="" src="${item.src}" style="animation-delay:${(-Math.random() * 10).toFixed(1)}s">`
+                : `<div class="slide-fallback"></div>`
+            }
+          </div>`
+          )
+          .join("");
+        return `<div class="attract-panel" style="grid-column:${p.col};grid-row:${p.row}">${slides}</div>`;
+      }).join("");
+
+      attractPanelsReady = true;
+    }
+
+    function startAttractWall() {
+      stopAttractWall();
+      if (!attractPanelsReady) return;
+      if (prefersReducedMotion()) return; // panels stay on their first (already-visible) slide
+      slideshowEl.querySelectorAll(".attract-panel").forEach((panel) => {
+        const slides = panel.querySelectorAll(".panel-slide");
+        if (slides.length < 2) return;
+        let idx = 0;
+        const period = splashIntervalMs * (0.75 + Math.random() * 0.7);
+        const timer = setInterval(() => {
+          slides[idx].classList.remove("active");
+          idx = (idx + 1) % slides.length;
+          slides[idx].classList.add("active");
+        }, period);
+        attractTimers.push(timer);
       });
     }
 
-    function goToSlide(i) {
-      const slides = slideshowEl.querySelectorAll(".slide");
-      slides.forEach((el) => el.classList.remove("active"));
-      slideIndex = (i + splash.length) % splash.length;
-      slides[slideIndex].classList.add("active");
-      attractCaption.textContent = splash[slideIndex].caption;
+    function stopAttractWall() {
+      attractTimers.forEach((t) => clearInterval(t));
+      attractTimers = [];
     }
 
-    function startSlideshow() {
-      stopSlideshow();
-      slideTimer = setInterval(() => goToSlide(slideIndex + 1), splashIntervalMs);
+    function startCaptionRotation() {
+      stopCaptionRotation();
+      if (!splash.length) return;
+      let idx = 0;
+      attractCaption.textContent = splash[0].caption;
+      captionTimer = setInterval(() => {
+        idx = (idx + 1) % splash.length;
+        attractCaption.textContent = splash[idx].caption;
+      }, splashIntervalMs);
     }
 
-    function stopSlideshow() {
-      if (slideTimer) clearInterval(slideTimer);
-      slideTimer = null;
+    function stopCaptionRotation() {
+      if (captionTimer) clearInterval(captionTimer);
+      captionTimer = null;
     }
 
     // -------------------------------------------------------------- idle / attract mode
@@ -455,14 +645,15 @@
       closeLightbox();
       closePreview();
       attractEl.classList.add("active");
-      goToSlide(0);
-      startSlideshow();
+      startAttractWall();
+      startCaptionRotation();
     }
 
     function resetIdle() {
       if (attractEl.classList.contains("active")) {
         attractEl.classList.remove("active");
-        stopSlideshow();
+        stopAttractWall();
+        stopCaptionRotation();
       }
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(goHomeAndAttract, idleTimeoutMs);
@@ -477,7 +668,7 @@
     // -------------------------------------------------------------- init
 
     renderHub();
-    renderSlideshow();
+    buildAttractWall();
     renderEqualizer(document.getElementById("eq-strip-hub"), 40);
     renderEqualizer(document.getElementById("eq-strip-attract"), 24);
     setActiveView("hub");

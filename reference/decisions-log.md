@@ -13,20 +13,38 @@ covered.
    each), animated equalizer bar, Ken Burns splash slideshow, media-led
    area pages (info overlaid on photo/video instead of filed in separate
    sections). This landed well and is the current structure.
-3. **v3 — tile interaction model** (current): tiles no longer link straight
+3. **v3 — tile interaction model**: tiles no longer link straight
    to the full page. Tap opens a preview modal (carousel + facts + two
    buttons); the full scrolling page is now an opt-in "learn more," reached
    only from inside the preview. User's stated reason: the site "still felt
    too much like a website" — the direct-link pattern read as browsing a
    website rather than using a kiosk app. Don't revert tiles to direct
    links to `showArea()` without re-asking.
+4. **v4 — "the wall" (current)**: even with v3's interaction model, the
+   user felt it "still looks too much like a website" — specifically the
+   padded, equal-gap, rounded-corner 4-column card grid on the hub, and the
+   tile-tap preview being a centered boxed dialog on a dim backdrop. Asked
+   for full-frame pictures, a literal "popout" interaction, stronger
+   purposeful animation, and more "wow factor" to draw people to the kiosk
+   from across the room. Landed on: an edge-to-edge asymmetric poster wall
+   for the hub (no gaps, no radius, `bands-ensembles` as a large flagship
+   block — see `reference/design-system.md`'s "hub wall" section for the
+   `WALL_LAYOUT` id-keyed placement map); tile taps now pop the tapped
+   photo out into a full-frame overlay via a FLIP transform animation
+   instead of fading in a boxed modal; the idle/attract screen became a
+   cinematic multi-panel wall (several photos crossfading independently at
+   once, pooled from every area's photos, not just the 5 splash slides)
+   instead of one slide at a time. The v2/v3 decisions above weren't
+   revisited — dark "stage" hub, tap-then-"learn more" flow, media-led area
+   pages, Auburn's 8 colors, and Sweet Sans Pro/Davis Sans all carried
+   forward unchanged; this was specifically about the hub/preview/attract
+   surfaces still reading as generic web-card patterns.
 
-Two skills were installed locally specifically for this project's design
-work: `frontend-design` (avoid generic/templated AI aesthetics — the v1→v2
-rationale) and `canvas-design`/`algorithmic-art`/`theme-factory` (bold
-palette commitment, "living texture" via the equalizer, informed v2). All
-from the official `anthropics/skills` GitHub repo, copied into
-`~/.claude/skills/`.
+Skills used for this project's design work: `frontend-design` (avoid
+generic/templated AI aesthetics — the v1→v2 rationale, and again for v4's
+plan) and `canvas-design`/`algorithmic-art`/`theme-factory` (bold palette
+commitment, "living texture" via the equalizer, informed v2). All from the
+official `anthropics/skills` GitHub repo, copied into `~/.claude/skills/`.
 
 ## Why `data/content.json`, not `data/content.js`
 
