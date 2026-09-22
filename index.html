@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Auburn University Department of Music</title>
   <meta name="description" content="Explore Auburn University's Department of Music — programs, ensembles, and how to apply.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://use.typekit.net" crossorigin>
+  <!-- Auburn's official Adobe Fonts (Typekit) kit: Sweet Sans Pro (body/UI) + Davis Sans (display) -->
+  <link rel="stylesheet" href="https://use.typekit.net/wfy5sib.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -15,10 +15,9 @@
 
     <header class="site-header">
       <div class="brand" id="brand-home" role="button" aria-label="Go to home screen">
-        <div class="brand-mark">AU</div>
+        <img class="brand-logo" src="assets/brand/auburn-logo.svg" alt="Auburn University">
         <div class="brand-text">
           <h1 id="dept-name">Department of Music</h1>
-          <div class="school">Auburn University</div>
         </div>
       </div>
       <a class="btn btn-primary" href="#" data-cta-url data-cta-label target="_blank" rel="noopener"></a>
@@ -26,11 +25,12 @@
 
     <!-- Hub / main menu -->
     <section class="view active" id="view-hub">
+      <div class="eq-strip" id="eq-strip-hub"></div>
       <div class="hub-hero">
         <h2 id="hero-title"></h2>
         <p id="hero-sub"></p>
       </div>
-      <div class="program" id="program-list"></div>
+      <div class="stage" id="program-list"></div>
     </section>
 
     <!-- Area detail -->
@@ -43,11 +43,15 @@
       <span class="footer-note">Auburn University Department of Music</span>
     </footer>
 
-    <!-- Idle attract screen -->
+    <!-- Idle attract screen: moving slideshow -->
     <div class="attract" id="attract">
-      <div class="brand-mark">AU</div>
-      <h2 class="serif">Department of Music</h2>
-      <p>Touch anywhere to explore programs &amp; ensembles</p>
+      <div class="slideshow" id="splash-slideshow"></div>
+      <div class="attract-overlay">
+        <img class="brand-logo lg" src="assets/brand/auburn-logo.svg" alt="Auburn University">
+        <h2 id="attract-caption">Department of Music</h2>
+        <p>Touch anywhere to explore programs &amp; ensembles</p>
+        <div class="eq-strip" id="eq-strip-attract"></div>
+      </div>
     </div>
 
     <!-- Lightbox for photos / video -->
@@ -61,7 +65,24 @@
   </div>
 
   <script src="js/vendor/qrcode.js"></script>
-  <script src="data/content.js"></script>
   <script src="js/app.js"></script>
+
+  <!--
+    Netlify Identity invite/confirmation emails land here (the site root)
+    with a token in the URL. This just forwards a logging-in staff member
+    into the CMS at /admin — it has no effect on the kiosk itself.
+  -->
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <script>
+    if (window.netlifyIdentity) {
+      window.netlifyIdentity.on("init", (user) => {
+        if (!user) {
+          window.netlifyIdentity.on("login", () => {
+            document.location.href = "/admin/";
+          });
+        }
+      });
+    }
+  </script>
 </body>
 </html>

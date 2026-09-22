@@ -1,0 +1,126 @@
+backend:
+  name: git-gateway
+  branch: main
+
+# Netlify Identity + Git Gateway must be enabled on the deployed Netlify site
+# before this admin UI can log anyone in. See README.md → "Content-management
+# UI (Decap CMS)" for the exact steps.
+
+local_backend: false
+
+media_folder: "assets/uploads"
+public_folder: "/assets/uploads"
+
+publish_mode: simple
+
+collections:
+  - name: "kiosk"
+    label: "Kiosk Content"
+    files:
+      - file: "data/content.json"
+        label: "Kiosk Content"
+        name: "content"
+        format: json
+        fields:
+          - label: "Logo"
+            name: "logo"
+            widget: "image"
+            hint: "Header + splash-screen logo. Defaults to the official Auburn wordmark."
+
+          - label: "Department"
+            name: "department"
+            widget: "object"
+            fields:
+              - { label: "Name (shown in header)", name: "name", widget: "string" }
+              - { label: "Home screen headline", name: "heroTitle", widget: "string" }
+              - { label: "Home screen subhead", name: "heroSub", widget: "string" }
+
+          - label: "Apply Button / QR Link"
+            name: "cta"
+            widget: "object"
+            fields:
+              - { label: "URL (apply / request-info form)", name: "url", widget: "string" }
+              - { label: "Button label", name: "label", widget: "string", default: "Apply now" }
+
+          - label: "Return-to-home idle timeout (milliseconds)"
+            name: "idleTimeoutMs"
+            widget: "number"
+            value_type: "int"
+            min: 15000
+            max: 600000
+            hint: "How long with no touch before the kiosk returns to the splash screen. 90000 = 90 seconds."
+
+          - label: "Splash slide duration (milliseconds)"
+            name: "splashIntervalMs"
+            widget: "number"
+            value_type: "int"
+            min: 3000
+            max: 60000
+            hint: "How long each splash-screen slide stays up. 7000 = 7 seconds."
+
+          - label: "Gallery photo captions"
+            name: "galleryCaptions"
+            widget: "list"
+            hint: "Cycled across each area's gallery photos, in order (e.g. photo 1 gets the first caption, photo 2 the second)."
+
+          - label: "Splash Screen Slideshow"
+            name: "splash"
+            widget: "list"
+            summary: "{{caption}}"
+            fields:
+              - { label: "Photo", name: "media", widget: "image", required: false, hint: "Leave blank to show a themed color slide instead." }
+              - label: "Slide color"
+                name: "theme"
+                widget: "select"
+                options: &auburn-colors
+                  - { label: "Auburn Blue", value: "#0b2341" }
+                  - { label: "Auburn Orange", value: "#e86100" }
+                  - { label: "Bodda Getta Blue", value: "#0093d2" }
+                  - { label: "Samford Brick Orange", value: "#cc4e0b" }
+                  - { label: "Campus Green", value: "#4e8020" }
+                  - { label: "Sunkissed Yellow", value: "#ffc044" }
+                  - { label: "Never to Yield Teal", value: "#00a597" }
+                  - { label: "Nova Brown", value: "#7a685b" }
+              - { label: "Caption", name: "caption", widget: "string" }
+
+          - label: "Areas (home screen tiles)"
+            name: "areas"
+            widget: "list"
+            summary: "{{name}}"
+            fields:
+              - label: "ID"
+                name: "id"
+                widget: "string"
+                pattern: ['^[a-z0-9-]+$', "Lowercase letters, numbers, and hyphens only — no spaces (e.g. brass, music-education)"]
+                hint: "Used internally as a unique key. Don't change this for an existing area once it's live."
+              - { label: "Name", name: "name", widget: "string" }
+              - { label: "Tagline", name: "tagline", widget: "string" }
+              - label: "Icon"
+                name: "icon"
+                widget: "select"
+                options:
+                  - { label: "Brass", value: "brass" }
+                  - { label: "Woodwind", value: "woodwind" }
+                  - { label: "Voice", value: "voice" }
+                  - { label: "Piano", value: "piano" }
+                  - { label: "Commercial / speaker", value: "commercial" }
+                  - { label: "Composition / notation", value: "composition" }
+                  - { label: "Education / grad cap", value: "education" }
+                  - { label: "Ensemble / people", value: "ensemble" }
+              - label: "Tile & page color"
+                name: "theme"
+                widget: "select"
+                options: *auburn-colors
+                hint: "Pick one of Auburn's 8 official brand colors — don't introduce new ones."
+              - { label: "Description", name: "description", widget: "text" }
+              - label: "Quick facts"
+                name: "facts"
+                widget: "list"
+                hint: "Short bullet points shown on the area page (e.g. degree name, ensembles)."
+              - { label: "Hero photo (full-bleed, top of the area page)", name: "hero", widget: "image", required: false }
+              - label: "Gallery photos"
+                name: "photos"
+                widget: "list"
+                field: { label: "Photo", name: "photo", widget: "image" }
+              - { label: "Gallery video clip", name: "video", widget: "file", required: false, hint: "Short MP4, ideally 10–30s, muted-friendly." }
+              - { label: "Video cover frame", name: "poster", widget: "image", required: false }

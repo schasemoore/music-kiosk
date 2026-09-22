@@ -1,8 +1,6 @@
 (function () {
   "use strict";
 
-  const { DEPARTMENT, AREAS, CTA_URL, CTA_LABEL, IDLE_TIMEOUT_MS } = window.KIOSK_CONTENT;
-
   const ICONS = {
     brass: '<path d="M4 16h6l4-4V8h6a3 3 0 0 1 3 3v0a3 3 0 0 1-3 3h-3" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4" cy="16" r="2" stroke-width="2" fill="none"/><path d="M10 12V8" stroke-width="2" stroke-linecap="round"/>',
     woodwind: '<path d="M9 3v18M9 3a3 3 0 0 1 6 0v3H9M9 9h6v3H9m0 3h6v3a3 3 0 0 1-6 0" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -26,213 +24,331 @@
   const lightboxEl = document.getElementById("lightbox");
   const lightboxBody = document.getElementById("lightbox-body");
 
-  document.getElementById("dept-name").textContent = DEPARTMENT.name;
-  document.getElementById("hero-title").textContent = DEPARTMENT.heroTitle;
-  document.getElementById("hero-sub").textContent = DEPARTMENT.heroSub;
+  // ---------------------------------------------------------------- media loading helpers
+  // Try an image, then a video, then fall back to a themed color card. Used
+  // anywhere a piece of content may or may not have real media yet.
 
-  document.querySelectorAll("[data-cta-url]").forEach((el) => {
-    if (el.tagName === "A") el.href = CTA_URL;
-  });
-  document.querySelectorAll("[data-cta-label]").forEach((el) => {
-    el.textContent = CTA_LABEL;
-  });
-
-  // ---------------------------------------------------------------- render hub (two-column program listing)
-
-  function renderHub() {
-    const mid = Math.ceil(AREAS.length / 2);
-    const columns = [AREAS.slice(0, mid), AREAS.slice(mid)];
-
-    programList.innerHTML = columns
-      .map(
-        (col) => `
-        <div class="program-col">
-          ${col
-            .map(
-              (a) => `
-            <button class="area-row" data-area="${a.id}" style="--row-color:${a.theme}">
-              <span class="icon-badge">${icon(a.icon)}</span>
-              <span class="row-text">
-                <h3>${a.name}</h3>
-                <span class="tagline">${a.tagline}</span>
-              </span>
-              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-            </button>`
-            )
-            .join("")}
-        </div>`
-      )
-      .join("");
-
-    programList.querySelectorAll(".area-row").forEach((row) => {
-      row.addEventListener("click", () => showArea(row.dataset.area));
+  function probeImage(src) {
+    return new Promise((resolve) => {
+      if (!src) return resolve(false);
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = src;
     });
   }
 
-  // ---------------------------------------------------------------- render area
-
-  function mediaFrame(src, alt, iconName) {
-    const wrap = document.createElement("div");
-    wrap.className = "photo-frame";
-    wrap.innerHTML = `<div class="media-placeholder">${icon(iconName)}<span>Photo coming soon</span></div>`;
-
-    const img = new Image();
-    img.alt = alt;
-    img.loading = "lazy";
-    img.addEventListener("load", () => {
-      wrap.innerHTML = "";
-      wrap.appendChild(img);
-      wrap.addEventListener("click", () => openLightbox("image", src, alt));
+  function probeVideo(src) {
+    return new Promise((resolve) => {
+      if (!src) return resolve(false);
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.onloadedmetadata = () => resolve(true);
+      v.onerror = () => resolve(false);
+      v.src = src;
     });
-    img.addEventListener("error", () => {
-      /* keep placeholder */
-    });
-    img.src = src;
-    return wrap;
   }
 
-  function videoFrame(area) {
-    const wrap = document.createElement("div");
-    wrap.className = "video-frame";
-    wrap.innerHTML = `<div class="media-placeholder">${icon(area.icon)}<span>Video coming soon</span></div>`;
+  // ---------------------------------------------------------------- boot: fetch content, then run the app
+  // Content is edited either by hand in data/content.json or through the
+  // Decap CMS admin UI at /admin, which writes to the same file.
 
-    const probe = document.createElement("video");
-    probe.preload = "metadata";
-    probe.addEventListener("loadedmetadata", () => {
-      wrap.innerHTML = `
-        <video muted playsinline preload="metadata" poster="${area.poster}">
-          <source src="${area.video}" type="video/mp4">
-        </video>
-        <div class="play-badge"><span class="circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7-11-7Z"/></svg></span></div>`;
-      wrap.addEventListener("click", () => openLightbox("video", area.video, area.name));
+  fetch("data/content.json", { cache: "no-store" })
+    .then((r) => r.json())
+    .then((content) => initApp(content))
+    .catch((err) => {
+      console.error("Failed to load data/content.json", err);
+      document.body.innerHTML =
+        '<div style="padding:60px;font-family:sans-serif;color:#17140f">Couldn\'t load kiosk content (data/content.json). Check the file exists and is valid JSON.</div>';
     });
-    probe.addEventListener("error", () => {
-      /* keep placeholder */
+
+  function initApp(content) {
+    const { department, cta, idleTimeoutMs, splashIntervalMs, galleryCaptions, splash, areas, logo } = content;
+
+    document.querySelectorAll(".brand-logo").forEach((img) => {
+      if (logo) img.src = logo;
     });
-    probe.src = area.video;
-    return wrap;
-  }
+    document.getElementById("dept-name").textContent = department.name;
+    document.getElementById("hero-title").textContent = department.heroTitle;
+    document.getElementById("hero-sub").textContent = department.heroSub;
 
-  function showArea(id) {
-    const area = AREAS.find((a) => a.id === id);
-    if (!area) return;
+    document.querySelectorAll("[data-cta-url]").forEach((el) => {
+      if (el.tagName === "A") el.href = cta.url;
+    });
+    document.querySelectorAll("[data-cta-label]").forEach((el) => {
+      el.textContent = cta.label;
+    });
 
-    areaContent.style.setProperty("--theme", area.theme);
-    areaContent.innerHTML = `
-      <div class="area-band" style="--theme:${area.theme}">
-        <div class="kicker">
-          <span class="icon-badge">${icon(area.icon)}</span>
-          <span class="dept-label">${DEPARTMENT.name}</span>
-        </div>
-        <h2>${area.name}</h2>
-        <p class="tagline">${area.tagline}</p>
-      </div>
-      <div class="area-body">
-        <p class="area-description">${area.description}</p>
-        <ul class="fact-list" style="--theme:${area.theme}">${area.facts.map((f) => `<li>${f}</li>`).join("")}</ul>
+    // -------------------------------------------------------------- render hub (saturated poster-tile stage)
 
-        <p class="media-caption">Photos</p>
-        <div class="media-grid" id="photo-grid" style="--theme:${area.theme}"></div>
+    function renderHub() {
+      programList.innerHTML = areas
+        .map(
+          (a) => `
+        <button class="area-tile" data-area="${a.id}" style="--tile-color:${a.theme}">
+          <svg class="ghost-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[a.icon] || ICONS.ensemble}</svg>
+          <span class="tile-scrim"></span>
+          <span class="tile-text">
+            <h3>${a.name}</h3>
+            <span class="tagline">${a.tagline}</span>
+          </span>
+        </button>`
+        )
+        .join("");
 
-        <p class="media-caption">Hear the ${area.name.toLowerCase()} program</p>
-        <div id="video-slot" style="--theme:${area.theme}"></div>
+      programList.querySelectorAll(".area-tile").forEach((tile) => {
+        tile.addEventListener("click", () => showArea(tile.dataset.area));
+      });
 
-        <div class="ticket">
-          <div class="ticket-main">
-            <h3>Apply to ${area.name}</h3>
-            <p>Scan the code, or tap the button up top, to start your Auburn Music application.</p>
-            <a class="btn btn-primary" href="${CTA_URL}" data-cta-url data-cta-label></a>
-          </div>
-          <div class="ticket-stub">
-            <div id="qr-slot"></div>
-            <span class="scan-note">Scan to apply</span>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.querySelectorAll("#area-content [data-cta-label]").forEach((el) => (el.textContent = CTA_LABEL));
-
-    const photoGrid = document.getElementById("photo-grid");
-    area.photos.forEach((src, i) => photoGrid.appendChild(mediaFrame(src, `${area.name} photo ${i + 1}`, area.icon)));
-
-    document.getElementById("video-slot").appendChild(videoFrame(area));
-
-    renderQR(document.getElementById("qr-slot"), CTA_URL);
-
-    viewArea.scrollTop = 0;
-    setActiveView("area");
-  }
-
-  // ---------------------------------------------------------------- QR code
-
-  function renderQR(container, url) {
-    container.innerHTML = "";
-    try {
-      const qr = qrcode(0, "M");
-      qr.addData(url);
-      qr.make();
-      container.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
-    } catch (e) {
-      container.textContent = "QR unavailable";
+      // Upgrade tiles to a real photo when one exists, without blocking the initial render.
+      areas.forEach((a) => {
+        const photoSrc = a.hero || (a.photos && a.photos[0]);
+        probeImage(photoSrc).then((ok) => {
+          if (!ok) return;
+          const tile = programList.querySelector(`.area-tile[data-area="${a.id}"]`);
+          if (!tile) return;
+          const img = document.createElement("img");
+          img.className = "tile-photo";
+          img.alt = a.name;
+          img.src = photoSrc;
+          tile.prepend(img);
+        });
+      });
     }
-  }
 
-  // ---------------------------------------------------------------- lightbox
+    // -------------------------------------------------------------- equalizer bars (live texture)
 
-  function openLightbox(kind, src, label) {
-    lightboxBody.innerHTML =
-      kind === "image"
-        ? `<img src="${src}" alt="${label}">`
-        : `<video src="${src}" controls autoplay playsinline></video>`;
-    lightboxEl.classList.add("active");
-  }
+    function renderEqualizer(container, count) {
+      if (!container) return;
+      let html = "";
+      for (let i = 0; i < count; i++) {
+        const dur = (0.7 + Math.random() * 0.9).toFixed(2);
+        const delay = (Math.random() * -1.6).toFixed(2);
+        const peak = 14 + Math.round(Math.random() * 26);
+        html += `<span style="--eq-h:${peak}px;animation-duration:${dur}s;animation-delay:${delay}s"></span>`;
+      }
+      container.innerHTML = html;
+    }
 
-  function closeLightbox() {
-    lightboxEl.classList.remove("active");
-    lightboxBody.innerHTML = "";
-  }
+    // -------------------------------------------------------------- gallery card (photo or video, caption baked in)
 
-  document.getElementById("lightbox-close").addEventListener("click", closeLightbox);
-  lightboxEl.addEventListener("click", (e) => {
-    if (e.target === lightboxEl) closeLightbox();
-  });
+    function galleryCard(kind, src, caption, posterSrc) {
+      const wrap = document.createElement("div");
+      wrap.className = "gallery-card";
+      wrap.innerHTML = `<div class="media-placeholder">${icon("ensemble")}<span>${kind === "video" ? "Video" : "Photo"} coming soon</span></div>`;
 
-  // ---------------------------------------------------------------- view switching
+      const probe = kind === "video" ? probeVideo(src) : probeImage(src);
+      probe.then((ok) => {
+        if (!ok) return;
+        if (kind === "video") {
+          wrap.innerHTML = `
+            <video muted playsinline preload="metadata" poster="${posterSrc || ""}">
+              <source src="${src}" type="video/mp4">
+            </video>
+            <div class="card-scrim"></div>
+            <div class="play-badge"><span class="circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7-11-7Z"/></svg></span></div>
+            <div class="card-caption">${caption}</div>`;
+          wrap.addEventListener("click", () => openLightbox("video", src, caption));
+        } else {
+          wrap.innerHTML = `
+            <img src="${src}" alt="${caption}">
+            <div class="card-scrim"></div>
+            <div class="card-caption">${caption}</div>`;
+          wrap.addEventListener("click", () => openLightbox("image", src, caption));
+        }
+      });
 
-  function setActiveView(name) {
-    viewHub.classList.toggle("active", name === "hub");
-    viewArea.classList.toggle("active", name === "area");
-  }
+      return wrap;
+    }
 
-  document.getElementById("back-to-hub").addEventListener("click", () => setActiveView("hub"));
-  document.getElementById("brand-home").addEventListener("click", () => setActiveView("hub"));
+    // -------------------------------------------------------------- render area (media-led)
 
-  // ---------------------------------------------------------------- idle / attract mode
+    function showArea(id) {
+      const area = areas.find((a) => a.id === id);
+      if (!area) return;
 
-  let idleTimer = null;
+      areaContent.style.setProperty("--theme", area.theme);
+      areaContent.innerHTML = `
+        <div class="area-hero" style="--theme:${area.theme}">
+          <svg class="hero-ghost" viewBox="0 0 24 24" fill="none" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">${ICONS[area.icon] || ICONS.ensemble}</svg>
+          <div class="hero-scrim"></div>
+          <div class="hero-content">
+            <div class="dept-label">${department.name}</div>
+            <h2>${area.name}</h2>
+            <p class="tagline">${area.tagline}</p>
+            <p class="area-description">${area.description}</p>
+            <ul class="fact-list">${area.facts.map((f) => `<li>${f}</li>`).join("")}</ul>
+          </div>
+        </div>
+        <div class="gallery-wall" id="gallery-wall"></div>
+        <div class="area-cta-wrap">
+          <div class="ticket">
+            <div class="ticket-main">
+              <h3>Apply to ${area.name}</h3>
+              <p>Scan the code, or tap the button up top, to start your Auburn Music application.</p>
+              <a class="btn btn-primary" href="${cta.url}" data-cta-url data-cta-label></a>
+            </div>
+            <div class="ticket-stub">
+              <div id="qr-slot"></div>
+              <span class="scan-note">Scan to apply</span>
+            </div>
+          </div>
+        </div>
+      `;
 
-  function goHomeAndAttract() {
+      document.querySelectorAll("#area-content [data-cta-label]").forEach((el) => (el.textContent = cta.label));
+
+      // Hero media: prefer a dedicated hero shot, fall back to the first gallery photo, else the themed gradient stays.
+      probeImage(area.hero || (area.photos && area.photos[0])).then((ok) => {
+        if (!ok) return;
+        const heroEl = document.querySelector(".area-hero");
+        const img = document.createElement("img");
+        img.className = "hero-media";
+        img.alt = area.name;
+        img.src = area.hero || area.photos[0];
+        heroEl.prepend(img);
+      });
+
+      const wall = document.getElementById("gallery-wall");
+      (area.photos || []).forEach((src, i) => {
+        wall.appendChild(galleryCard("photo", src, `${area.name} — ${galleryCaptions[i % galleryCaptions.length]}`));
+      });
+      if (area.video) {
+        wall.appendChild(galleryCard("video", area.video, `${area.name} — In performance`, area.poster));
+      }
+
+      renderQR(document.getElementById("qr-slot"), cta.url);
+
+      viewArea.scrollTop = 0;
+      setActiveView("area");
+    }
+
+    // -------------------------------------------------------------- QR code
+
+    function renderQR(container, url) {
+      container.innerHTML = "";
+      try {
+        const qr = qrcode(0, "M");
+        qr.addData(url);
+        qr.make();
+        container.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
+      } catch (e) {
+        container.textContent = "QR unavailable";
+      }
+    }
+
+    // -------------------------------------------------------------- lightbox
+
+    function openLightbox(kind, src, label) {
+      lightboxBody.innerHTML =
+        kind === "image"
+          ? `<img src="${src}" alt="${label}">`
+          : `<video src="${src}" controls autoplay playsinline></video>`;
+      lightboxEl.classList.add("active");
+    }
+
+    function closeLightbox() {
+      lightboxEl.classList.remove("active");
+      lightboxBody.innerHTML = "";
+    }
+
+    document.getElementById("lightbox-close").addEventListener("click", closeLightbox);
+    lightboxEl.addEventListener("click", (e) => {
+      if (e.target === lightboxEl) closeLightbox();
+    });
+
+    // -------------------------------------------------------------- view switching
+
+    function setActiveView(name) {
+      viewHub.classList.toggle("active", name === "hub");
+      viewArea.classList.toggle("active", name === "area");
+    }
+
+    document.getElementById("back-to-hub").addEventListener("click", () => setActiveView("hub"));
+    document.getElementById("brand-home").addEventListener("click", () => setActiveView("hub"));
+
+    // -------------------------------------------------------------- splash slideshow (attract screen)
+
+    const slideshowEl = document.getElementById("splash-slideshow");
+    const attractCaption = document.getElementById("attract-caption");
+    let slideIndex = 0;
+    let slideTimer = null;
+
+    function renderSlideshow() {
+      slideshowEl.innerHTML = splash
+        .map(
+          (s, i) => `
+        <div class="slide${i === 0 ? " active" : ""}" data-index="${i}" style="--slide-color:${s.theme}">
+          <div class="slide-fallback"></div>
+        </div>`
+        )
+        .join("");
+
+      splash.forEach((s, i) => {
+        const slideEl = slideshowEl.querySelector(`.slide[data-index="${i}"]`);
+        probeImage(s.media).then((ok) => {
+          if (!ok) return;
+          const img = document.createElement("img");
+          img.className = "slide-media";
+          img.alt = s.caption;
+          img.src = s.media;
+          slideEl.prepend(img);
+        });
+      });
+    }
+
+    function goToSlide(i) {
+      const slides = slideshowEl.querySelectorAll(".slide");
+      slides.forEach((el) => el.classList.remove("active"));
+      slideIndex = (i + splash.length) % splash.length;
+      slides[slideIndex].classList.add("active");
+      attractCaption.textContent = splash[slideIndex].caption;
+    }
+
+    function startSlideshow() {
+      stopSlideshow();
+      slideTimer = setInterval(() => goToSlide(slideIndex + 1), splashIntervalMs);
+    }
+
+    function stopSlideshow() {
+      if (slideTimer) clearInterval(slideTimer);
+      slideTimer = null;
+    }
+
+    // -------------------------------------------------------------- idle / attract mode
+
+    let idleTimer = null;
+
+    function goHomeAndAttract() {
+      setActiveView("hub");
+      closeLightbox();
+      attractEl.classList.add("active");
+      goToSlide(0);
+      startSlideshow();
+    }
+
+    function resetIdle() {
+      if (attractEl.classList.contains("active")) {
+        attractEl.classList.remove("active");
+        stopSlideshow();
+      }
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(goHomeAndAttract, idleTimeoutMs);
+    }
+
+    ["pointerdown", "touchstart", "mousemove", "keydown"].forEach((evt) =>
+      document.addEventListener(evt, resetIdle, { passive: true })
+    );
+
+    attractEl.addEventListener("click", resetIdle);
+
+    // -------------------------------------------------------------- init
+
+    renderHub();
+    renderSlideshow();
+    renderEqualizer(document.getElementById("eq-strip-hub"), 40);
+    renderEqualizer(document.getElementById("eq-strip-attract"), 24);
     setActiveView("hub");
-    closeLightbox();
-    attractEl.classList.add("active");
+    resetIdle();
   }
-
-  function resetIdle() {
-    attractEl.classList.remove("active");
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(goHomeAndAttract, IDLE_TIMEOUT_MS);
-  }
-
-  ["pointerdown", "touchstart", "mousemove", "keydown"].forEach((evt) =>
-    document.addEventListener(evt, resetIdle, { passive: true })
-  );
-
-  attractEl.addEventListener("click", resetIdle);
-
-  // ---------------------------------------------------------------- init
-
-  renderHub();
-  setActiveView("hub");
-  resetIdle();
 })();
