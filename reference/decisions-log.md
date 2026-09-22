@@ -94,3 +94,26 @@ This dev machine's default SSH key belongs to a different GitHub account
 than the one that owns this repo. Full detail and the fix (a second SSH key
 + host alias) is in `reference/deployment.md` — noted here so future-me
 doesn't re-diagnose "Permission denied (publickey)" from scratch.
+
+## Where the real photos came from, and a CDN gotcha
+
+All current photos in `assets/images/` (every area's `hero.jpg`/`1.jpg`/
+`2.jpg`, all 5 splash slides) were pulled from cla.auburn.edu/music and its
+news articles — the department's own site, reused for the department's own
+kiosk. Sources, roughly: Symphonic Winds' Japan and Europe/NYC tours (bands,
+piano, voice/choir), the Lucky Man Studio recording facility (commercial
+music), a Composition/Tech news photo, a conducting photo (music education),
+a Juilliard-bound trumpet grad (brass), and a percussion-class/saxophone
+photo (woodwind & percussion). Skipped anything filename-tagged
+`adobestock_*` — that's licensed stock Auburn pays for, not their own
+photography, not ours to reuse.
+
+**Gotcha**: Auburn's CMS image endpoint (`cla.auburn.edu/media/<id>/<file>
+?width=N`) silently returns a corrupted/glitched JPEG for some source
+images at some requested widths — same byte count every retry, so it's
+server-side, not a transfer error. Always fetch the image with **no**
+width/height query params (full original resolution) and resize locally
+(`sips -s format jpeg -s formatOptions 82 --resampleWidth N in --out out.jpg`)
+instead of trusting their resize endpoint. If you pull more photos from
+this site later, check each one visually before committing — don't assume
+a 200 response means a good image.
