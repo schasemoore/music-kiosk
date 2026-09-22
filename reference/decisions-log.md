@@ -4,6 +4,28 @@ Why things are the way they are — check here before "fixing" something that
 was actually a deliberate call, and before re-treading ground already
 covered.
 
+## Idle detection doesn't count mouse movement, and there's a hidden reset
+
+Two related interaction changes, both from the same conversation:
+
+1. `resetIdle()` used to be wired to `mousemove` as well as
+   `pointerdown`/`touchstart`/`keydown`. On the actual touchscreen kiosk
+   that's harmless, but when testing/demoing on a laptop, just moving the
+   cursor near the app counted as "using the kiosk" and kept it from ever
+   going idle. User's framing: on a laptop, a "tap" should mean an actual
+   **click**, not the mouse merely drifting across the screen. Fixed by
+   dropping `mousemove` from the listener list (`js/app.js`, `resetIdle`'s
+   wiring) — `pointerdown` alone already covers both a real screen touch and
+   a real mouse click, so nothing was lost for the touchscreen case.
+2. Added a way for staff to force the attract/splash screen up on demand,
+   instead of waiting out `idleTimeoutMs` (90s by default) — useful for
+   demos or to reset the kiosk between visitors without a settings menu.
+   User's request was specifically for a *secret* trigger, not a visible
+   button: double-click (laptop) / double-tap (touchscreen) the Auburn logo
+   in the header (`#brand-home`) calls `goHomeAndAttract()` directly. It's
+   a plain `dblclick` listener — nothing about it is announced in the UI,
+   and it should stay that way; don't add a visible hint or label for it.
+
 ## Design direction (three iterations)
 
 1. **v1 — "concert program"**: quiet two-column list, cream background,

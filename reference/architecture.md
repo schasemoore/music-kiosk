@@ -43,7 +43,7 @@ all CMS fields, not hardcoded JS — see `reference/content-schema.md`.
 | `buildAttractWall()` | 591 | Async: probes the pool, shuffles it, distributes it across `ATTRACT_PANELS`, and renders the panel/slide markup into `#splash-slideshow`. Does not start the crossfade timers — see `startAttractWall` |
 | `startAttractWall()` / `stopAttractWall()` | 625 / 643 | Start/stop each panel's independent crossfade `setInterval` (randomized period around `splashIntervalMs`). No-op under reduced motion |
 | `startCaptionRotation()` / `stopCaptionRotation()` | 648 / 659 | Independent timer that rotates `#attract-caption` through `splash[].caption`, decoupled from which panel is showing which image |
-| `goHomeAndAttract()` / `resetIdle()` | 668 / 677 | Idle timer: any touch/click/keydown resets a timeout; on expiry, closes everything, shows `#attract`, and starts the wall + caption rotation |
+| `goHomeAndAttract()` / `resetIdle()` | 676 / 685 | Idle timer: any press/touch/key resets a timeout (deliberately not `mousemove` — see `reference/decisions-log.md`); on expiry, closes everything, shows `#attract`, and starts the wall + caption rotation. `goHomeAndAttract` is also called directly by the hidden logo double-click below |
 
 ## Two different "lightboxes" — don't conflate them
 
@@ -59,3 +59,5 @@ The `[data-cta-url]`/`[data-cta-label]` attribute-based wiring in `initApp` now 
 ## Data flow for a click
 
 `tile-open click` → `openPreview(id)` reads the tile's rect + photo, `flipFly`s a clone to fill the viewport → once landed, reveals `#area-preview` and resolves media → `renderPreviewCarousel` → user taps **More about this program** → `closePreview()` (flies the clone back down to the tile) + `showArea(id)` → `setActiveView("area")`. Idle timeout or the header logo both call `closePreview()` + `closeLightbox()` before going home — if you add a third overlay, wire it into `goHomeAndAttract()` and the `brand-home` click handler too, or it'll stay stuck open behind the hub.
+
+**Hidden staff reset**: `#brand-home` also has a `dblclick` listener that calls `goHomeAndAttract()` directly — double-clicking/double-tapping the logo forces the attract screen up immediately instead of waiting out `idleTimeoutMs`. Not surfaced anywhere in the UI; see `reference/decisions-log.md` for why.

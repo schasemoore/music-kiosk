@@ -556,6 +556,14 @@
       setActiveView("hub");
     });
 
+    // Undocumented staff reset: double-click/double-tap the logo to force
+    // the attract screen up immediately, instead of waiting out idleTimeoutMs.
+    // Not exposed anywhere in the UI on purpose.
+    document.getElementById("brand-home").addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      goHomeAndAttract();
+    });
+
     // -------------------------------------------------------------- attract screen: cinematic multi-panel wall
 
     const slideshowEl = document.getElementById("splash-slideshow");
@@ -684,7 +692,10 @@
       idleTimer = setTimeout(goHomeAndAttract, idleTimeoutMs);
     }
 
-    ["pointerdown", "touchstart", "mousemove", "keydown"].forEach((evt) =>
+    // Deliberately no "mousemove" here — on a laptop/trackpad, the cursor
+    // drifting near the kiosk shouldn't count as a "tap." Only an actual
+    // press/click (pointerdown covers touch and mouse alike) or a key does.
+    ["pointerdown", "touchstart", "keydown"].forEach((evt) =>
       document.addEventListener(evt, resetIdle, { passive: true })
     );
 
