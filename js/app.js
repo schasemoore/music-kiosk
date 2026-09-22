@@ -23,6 +23,14 @@
   const attractEl = document.getElementById("attract");
   const lightboxEl = document.getElementById("lightbox");
   const lightboxBody = document.getElementById("lightbox-body");
+  const previewEl = document.getElementById("area-preview");
+  const previewPanel = document.getElementById("preview-panel");
+  const previewMedia = document.getElementById("preview-media");
+  const previewEyebrow = document.getElementById("preview-eyebrow");
+  const previewName = document.getElementById("preview-name");
+  const previewTagline = document.getElementById("preview-tagline");
+  const previewFacts = document.getElementById("preview-facts");
+  const previewLearnMore = document.getElementById("preview-learn-more");
 
   // ---------------------------------------------------------------- media loading helpers
   // Try an image, then a video, then fall back to a themed color card. Used
@@ -85,19 +93,22 @@
       programList.innerHTML = areas
         .map(
           (a) => `
-        <button class="area-tile" data-area="${a.id}" style="--tile-color:${a.theme}">
-          <svg class="ghost-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[a.icon] || ICONS.ensemble}</svg>
-          <span class="tile-scrim"></span>
-          <span class="tile-text">
-            <h3>${a.name}</h3>
-            <span class="tagline">${a.tagline}</span>
-          </span>
-        </button>`
+        <div class="area-tile" style="--tile-color:${a.theme}">
+          <button class="tile-open" data-area="${a.id}" aria-label="Preview ${a.name}">
+            <svg class="ghost-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[a.icon] || ICONS.ensemble}</svg>
+            <span class="tile-scrim"></span>
+            <span class="tile-text">
+              <h3>${a.name}</h3>
+              <span class="tagline">${a.tagline}</span>
+            </span>
+          </button>
+          <a class="tile-cta btn" href="${cta.url}" data-cta-url target="_blank" rel="noopener" aria-label="Apply to ${a.name}">Apply</a>
+        </div>`
         )
         .join("");
 
-      programList.querySelectorAll(".area-tile").forEach((tile) => {
-        tile.addEventListener("click", () => showArea(tile.dataset.area));
+      programList.querySelectorAll(".tile-open").forEach((tile) => {
+        tile.addEventListener("click", () => openPreview(tile.dataset.area));
       });
 
       // Upgrade tiles to a real photo when one exists, without blocking the initial render.
@@ -105,13 +116,13 @@
         const photoSrc = a.hero || (a.photos && a.photos[0]);
         probeImage(photoSrc).then((ok) => {
           if (!ok) return;
-          const tile = programList.querySelector(`.area-tile[data-area="${a.id}"]`);
-          if (!tile) return;
+          const tileOpen = programList.querySelector(`.tile-open[data-area="${a.id}"]`);
+          if (!tileOpen) return;
           const img = document.createElement("img");
           img.className = "tile-photo";
           img.alt = a.name;
           img.src = photoSrc;
-          tile.prepend(img);
+          tileOpen.parentElement.prepend(img);
         });
       });
     }
@@ -160,6 +171,118 @@
 
       return wrap;
     }
+
+    // -------------------------------------------------------------- tile preview modal (carousel + quick facts)
+
+    function buildMediaList(area) {
+      const items = [];
+      if (area.hero) items.push({ type: "image", src: area.hero });
+      (area.photos || []).forEach((src) => items.push({ type: "image", src }));
+      if (area.video) items.push({ type: "video", src: area.video, poster: area.poster });
+      return items;
+    }
+
+    async function resolveMediaList(rawItems) {
+      const resolved = [];
+      for (const item of rawItems) {
+        const ok = item.type === "video" ? await probeVideo(item.src) : await probeImage(item.src);
+        if (ok) resolved.push(item);
+      }
+      return resolved;
+    }
+
+    let previewSlideIndex = 0;
+
+    function renderPreviewCarousel(area, items) {
+      if (!items.length) {
+        previewMedia.innerHTML = `
+          <div class="preview-slide active">
+            <div class="slide-fallback-icon">${icon(area.icon)}</div>
+          </div>`;
+        return;
+      }
+
+      previewMedia.innerHTML = `
+        ${items
+          .map(
+            (item, i) => `
+          <div class="preview-slide${i === 0 ? " active" : ""}" data-index="${i}">
+            ${
+              item.type === "video"
+                ? `<video muted playsinline loop preload="metadata" poster="${item.poster || ""}"><source src="${item.src}" type="video/mp4"></video>`
+                : `<img src="${item.src}" alt="${area.name}">`
+            }
+          </div>`
+          )
+          .join("")}
+        ${
+          items.length > 1
+            ? `
+          <button class="preview-nav prev" aria-label="Previous">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+          <button class="preview-nav next" aria-label="Next">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <div class="preview-dots">
+            ${items.map((_, i) => `<button data-index="${i}" class="${i === 0 ? "active" : ""}" aria-label="Slide ${i + 1}"></button>`).join("")}
+          </div>`
+            : ""
+        }
+      `;
+
+      previewSlideIndex = 0;
+
+      function goToPreviewSlide(i) {
+        const slides = previewMedia.querySelectorAll(".preview-slide");
+        previewSlideIndex = (i + items.length) % items.length;
+        slides.forEach((el, idx) => el.classList.toggle("active", idx === previewSlideIndex));
+        previewMedia.querySelectorAll(".preview-dots button").forEach((el, idx) => el.classList.toggle("active", idx === previewSlideIndex));
+        const video = slides[previewSlideIndex] && slides[previewSlideIndex].querySelector("video");
+        if (video) video.play().catch(() => {});
+      }
+
+      const prevBtn = previewMedia.querySelector(".preview-nav.prev");
+      const nextBtn = previewMedia.querySelector(".preview-nav.next");
+      if (prevBtn) prevBtn.addEventListener("click", () => goToPreviewSlide(previewSlideIndex - 1));
+      if (nextBtn) nextBtn.addEventListener("click", () => goToPreviewSlide(previewSlideIndex + 1));
+      previewMedia.querySelectorAll(".preview-dots button").forEach((dot, i) => {
+        dot.addEventListener("click", () => goToPreviewSlide(i));
+      });
+
+      const firstVideo = previewMedia.querySelector(".preview-slide.active video");
+      if (firstVideo) firstVideo.play().catch(() => {});
+    }
+
+    function openPreview(id) {
+      const area = areas.find((a) => a.id === id);
+      if (!area) return;
+
+      previewPanel.style.setProperty("--theme", area.theme);
+      previewEyebrow.textContent = department.name;
+      previewName.textContent = area.name;
+      previewTagline.textContent = area.tagline;
+      previewFacts.innerHTML = area.facts.map((f) => `<li>${f}</li>`).join("");
+      previewMedia.innerHTML = `<div class="preview-slide active"><div class="slide-fallback-icon">${icon(area.icon)}</div></div>`;
+      previewLearnMore.onclick = () => {
+        closePreview();
+        showArea(area.id);
+      };
+
+      previewEl.classList.add("active");
+
+      resolveMediaList(buildMediaList(area)).then((items) => renderPreviewCarousel(area, items));
+    }
+
+    function closePreview() {
+      previewEl.classList.remove("active");
+      previewMedia.querySelectorAll("video").forEach((v) => v.pause());
+    }
+
+    document.getElementById("preview-close").addEventListener("click", closePreview);
+    previewEl.addEventListener("click", (e) => {
+      if (e.target === previewEl) closePreview();
+    });
 
     // -------------------------------------------------------------- render area (media-led)
 
@@ -265,7 +388,11 @@
     }
 
     document.getElementById("back-to-hub").addEventListener("click", () => setActiveView("hub"));
-    document.getElementById("brand-home").addEventListener("click", () => setActiveView("hub"));
+    document.getElementById("brand-home").addEventListener("click", () => {
+      closePreview();
+      closeLightbox();
+      setActiveView("hub");
+    });
 
     // -------------------------------------------------------------- splash slideshow (attract screen)
 
@@ -322,6 +449,7 @@
     function goHomeAndAttract() {
       setActiveView("hub");
       closeLightbox();
+      closePreview();
       attractEl.classList.add("active");
       goToSlide(0);
       startSlideshow();

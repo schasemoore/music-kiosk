@@ -62,6 +62,26 @@
       <div id="lightbox-body"></div>
     </div>
 
+    <!-- Tap-a-tile preview: media + quick facts, with a path to the full area page -->
+    <div class="preview-modal" id="area-preview">
+      <div class="preview-panel" id="preview-panel">
+        <button class="preview-close" id="preview-close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+        <div class="preview-media" id="preview-media"></div>
+        <div class="preview-info">
+          <div class="preview-eyebrow" id="preview-eyebrow"></div>
+          <h2 id="preview-name"></h2>
+          <p class="tagline" id="preview-tagline"></p>
+          <ul class="fact-list" id="preview-facts"></ul>
+          <div class="preview-actions">
+            <button class="btn btn-outline" id="preview-learn-more">More about this program</button>
+            <a class="btn btn-primary" href="#" data-cta-url data-cta-label target="_blank" rel="noopener"></a>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script src="js/vendor/qrcode.js"></script>
