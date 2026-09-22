@@ -117,3 +117,56 @@ width/height query params (full original resolution) and resize locally
 instead of trusting their resize endpoint. If you pull more photos from
 this site later, check each one visually before committing — don't assume
 a 200 response means a good image.
+
+## Second archive pass — every area now has a full 3-photo set, all from Box
+
+Follow-up to the pass above. Every area's gallery previously had `1.jpg`
+and `2.jpg` declared in `content.json`, but for five areas (`brass`,
+`woodwind-percussion`, `voice`, `composition-technology`, plus all of
+`music-education`) the `2.jpg` file (and for music-education, `1.jpg` too)
+didn't actually exist on disk — the app's 404-fallback was quietly hiding
+the gap. `commercial-music` and `music-education` were also still on their
+original web-sourced photos (no archive match had been found for them in
+the prior pass).
+
+Fixed by working directly from the Box archive
+(`~/Library/CloudStorage/Box-Box/AU Department of Music Photo Archive`,
+mounted as an extra working directory, not part of this git repo — nothing
+in it was moved or deleted) instead of the website. Preferred each event's
+`Public Photos`/`Public` subfolder where one existed — per-event folders
+here are split `Public` (cleared for department use) vs `Master` (full raw
+set, not necessarily cleared), matching the "Public folder = pre-cleared"
+convention from the first pass. Picked recent (2024–2026) professional
+Ryan English Photography shots over the older `Dept Photos [from admin
+drive]` tree (2013–2018, uncleared, and explicitly not what "newer photos"
+meant here).
+
+- `commercial-music` hero/1/2: replaced entirely — Sonic Nation: Blues &
+  Roots concert (March 2024), `Commercial Ensembles/Blues and Roots/.../
+  Public Photos`.
+- `music-education` hero/1/2: replaced entirely — hero and one gallery
+  photo are the Feb. 2025 Honor Band host concert (a conducting shot and a
+  brass-section shot, `Bands/Honor Bands/2025 | Feb. 28, Honor Band`); the
+  other gallery photo is a phone-shot group photo from a 2025 summer
+  outreach camp/workshop at Goodwin Hall (`Dept. Events/2025 LAaMM`) — no
+  professional shoot exists for this area specifically, so this is the
+  closest real match to "K-12 outreach" the archive has. Worth swapping if
+  a dedicated Music Ed classroom/methods shoot ever gets added to the
+  archive.
+- `composition-technology` 2.jpg (new): Lucky Man Studio control-room shot,
+  `Lucky Man Studio/2025 August OCM` (named "stock" in the archive —
+  department-shot specifically for reuse like this).
+- `brass` 2.jpg (new): Trumpet Ensemble concert, `Chamber Ensembles/Brass
+  Ensembles/Trumpet/2022 | Trumpet Ensemble Concert/Public Photos`.
+- `woodwind-percussion` 2.jpg (new): Percussion Ensemble & Steel Band,
+  April 2026 — the most recent shoot in the whole archive, `Chamber
+  Ensembles/Percussion Ensembles/2026 | Apr 8, .../Public`.
+- `voice` 2.jpg (new): Fall Choral Concert, Nov. 2025, `Choirs/Choral
+  Concerts/2025 | November 16, Fall Choral Concert/Public`.
+
+No `content.json` changes were needed — the `photos` arrays already
+referenced these exact `1.jpg`/`2.jpg` paths; only the files themselves
+were missing or stale. Same `sips -s format jpeg -s formatOptions 82
+--resampleWidth N` local-resize step as before (1600px for hero, 1200px
+for gallery photos) — no CDN involved this time since the source was local
+Box files, not a website.
