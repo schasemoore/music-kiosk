@@ -123,6 +123,8 @@
           img.alt = a.name;
           img.src = photoSrc;
           tileOpen.parentElement.prepend(img);
+          const ghost = tileOpen.querySelector(".ghost-icon");
+          if (ghost) ghost.style.display = "none";
         });
       });
     }
@@ -330,6 +332,8 @@
         img.alt = area.name;
         img.src = area.hero || area.photos[0];
         heroEl.prepend(img);
+        const ghost = heroEl.querySelector(".hero-ghost");
+        if (ghost) ghost.style.display = "none";
       });
 
       const wall = document.getElementById("gallery-wall");
