@@ -85,30 +85,34 @@ file in place, unless you also want to change the default.
 - **Ghost icon**: a large, low-opacity (`0.14-0.16`) watermark of the area's own icon, positioned top-right, behind the scrim. Purely decorative texture — `.ghost-icon`, `.hero-ghost`.
 - **Media-probe-then-upgrade**: nothing waits on a network request to render. Placeholder/gradient shows immediately; `probeImage`/`probeVideo` resolve async and swap in real media if it exists. Follow this pattern for any new media slot — never `await` a probe before first paint.
 
-## The hub wall's hand-placed layout (v4)
+## The hub wall's CMS-driven layout (v4.1)
 
-`.stage` is a 12-column × 3-row grid with **zero gap and zero border-radius**
-— tiles butt together like a poster wall, not a card grid. Each area's
-position is placed explicitly by `id` via `.area-tile[data-area="..."]`
-selectors in CSS (`css/styles.css:199-380`), mirrored by the `WALL_LAYOUT`
-object in `js/app.js` (used to set the same `grid-column`/`grid-row` inline
-so the layout doesn't flash-then-shift before CSS loads). `bands-ensembles`
-is the flagship: half-width, double-height, bigger type scale (its own
-`.tile-text`/`h3`/`.tagline` overrides). **Adding, removing, or renaming an
-area's `id` means updating both `WALL_LAYOUT` and the CSS selectors, or the
-new/renamed area silently falls back to `grid-column/row: auto` and just
-fills whatever cell is left over.**
+`.stage` is a 4-column CSS Grid with **zero gap and zero border-radius** —
+tiles butt together like a poster wall, not a card grid — using
+`grid-auto-flow: dense` and `grid-auto-rows: 1fr`. There is no hand-placed
+per-area layout: each area's `size` field (`"normal"` = 1×1 cell, `"large"`
+= 2×2 cells via `.area-tile.size-large`) plus its position in the
+`areas[]` array (drag-reorderable in the CMS) is all the grid needs —
+`dense` packing fills gaps automatically around whatever mix of sizes ends
+up in whatever order. `.area-tile.size-large` also gets a bigger type scale
+(its own `.tile-text`/`h3`/`.tagline` overrides). This replaced an earlier
+hand-placed version keyed by `.area-tile[data-area="..."]` + a `WALL_LAYOUT`
+map in `js/app.js` — don't reintroduce that pattern; the whole point of the
+rewrite was letting a CMS editor change sizing/order without touching code.
+See `reference/content-schema.md`'s "Hub wall layout" section for the
+editor-facing behavior (including the trailing-gap caveat when a `"large"`
+area isn't first).
 
-At the 1280px/860px breakpoints the grid collapses to 2 columns / 1 column
-of auto-placed tiles. The flagship uses `order: -1` (not DOM reordering) to
-stay first, and `grid-row: span 2` — **not** `min-height` — to get enough
-vertical room. A grid item's `min-height` doesn't reliably grow its own
-auto-sized track (its children are all `position: absolute`, so it has no
-in-flow content to size the track by), and if the track stays short the
-item just overflows into — and visually overlaps — the row below it. This
-bit us once already; if the flagship tile ever looks too short or something
-overlaps it at a breakpoint, check for a stray `min-height` before adding
-`grid-row: span N` back.
+At the 1280px/860px breakpoints, `.stage` just drops to 2 columns / 1
+column — `.size-large`'s `span 2 / span 2` naturally becomes "full width"
+at 2 columns, no override needed. At 1 column it's overridden to
+`grid-column: span 1` (still `span 2` rows, so it stays tall) — **not**
+`min-height`, which doesn't reliably grow its own auto-sized track (a
+tile's children are all `position: absolute`, so it has no in-flow content
+to size the track by) and can overflow into and overlap the row below.
+This bit us once already; if a large tile ever looks too short or overlaps
+its neighbor at a breakpoint, check for a stray `min-height` before adding
+a `grid-row: span N` back.
 
 ## Tile pop-out (v4)
 
@@ -127,12 +131,20 @@ Under `prefers-reduced-motion: reduce`, both `openPreview` and `closePreview`
 skip the clone entirely and just toggle `.active`/`.info-visible` (a plain
 opacity crossfade via `.preview-modal`'s own `transition`).
 
+Once landed, what plays inside the overlay is controlled per-area by the
+CMS field `previewPlayback` (`reference/content-schema.md`): `"photo"`
+(default, manual swipe), `"video"` (opens straight to the area's video,
+autoplaying), or `"slideshow"` (auto-advances through every item on a
+timer). This is handled entirely inside `renderPreviewCarousel`, not the
+FLIP mechanism above — the pop-out animation itself doesn't know or care
+what mode an area is in.
+
 ## Attract screen: multi-panel wall (v4)
 
 `#splash-slideshow` holds several `.attract-panel` elements (positioned via
-`ATTRACT_PANELS` in `js/app.js` — a different span pattern from the hub's
-`WALL_LAYOUT` on purpose, so it doesn't read as a rerun of the same grid).
-Each panel gets its own subset of images — pooled from **both**
+`ATTRACT_PANELS` in `js/app.js` — a fixed, deliberately different span
+pattern from the hub wall's own CMS-driven layout, so it doesn't read as a
+rerun of the same grid). Each panel gets its own subset of images — pooled from **both**
 `content.splash[]` and every area's `hero`/`photos` (`buildImagePool`), not
 just the splash slides — and crossfades through them on its own independent,
 jittered timer (`startAttractWall`), so panels change out of sync with each

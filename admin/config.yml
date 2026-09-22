@@ -95,6 +95,14 @@ collections:
                 hint: "Used internally as a unique key. Don't change this for an existing area once it's live."
               - { label: "Name", name: "name", widget: "string" }
               - { label: "Tagline", name: "tagline", widget: "string" }
+              - label: "Home screen tile size"
+                name: "size"
+                widget: "select"
+                options:
+                  - { label: "Normal", value: "normal" }
+                  - { label: "Large (flagship)", value: "large" }
+                default: "normal"
+                hint: "Large tiles take up 4x the space of a normal one on the home screen wall. Drag areas above to reorder them — the wall packs itself around whichever sizes you pick, in that order, so more than one large tile is fine too."
               - label: "Icon"
                 name: "icon"
                 widget: "select"
@@ -124,3 +132,12 @@ collections:
                 field: { label: "Photo", name: "photo", widget: "image" }
               - { label: "Gallery video clip", name: "video", widget: "file", required: false, hint: "Short MP4, ideally 10–30s, muted-friendly." }
               - { label: "Video cover frame", name: "poster", widget: "image", required: false }
+              - label: "Full-screen preview playback"
+                name: "previewPlayback"
+                widget: "select"
+                options:
+                  - { label: "Photo (static, swipe to browse)", value: "photo" }
+                  - { label: "Video (opens straight to the video, autoplaying)", value: "video" }
+                  - { label: "Slideshow (auto-advances through photos/video)", value: "slideshow" }
+                default: "photo"
+                hint: "Controls what happens when a visitor taps this tile and it pops out full-screen. \"Video\" falls back to Photo if no video is set above."

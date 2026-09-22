@@ -12,20 +12,6 @@
     ensemble: '<circle cx="8" cy="8" r="3" stroke-width="2" fill="none"/><circle cx="17" cy="9" r="2.5" stroke-width="2" fill="none"/><path d="M2 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M15 19v-1a4 4 0 0 1 4-4h.5a3 3 0 0 1 2.5 4.5" stroke-width="2" fill="none" stroke-linecap="round"/>',
   };
 
-  // Hand-placed hub wall layout, keyed by area id (not array order) — the
-  // asymmetric "poster wall" grid. Adding/removing an area means updating
-  // this map and its mirror in css/styles.css (.area-tile[data-area=...]).
-  const WALL_LAYOUT = {
-    "bands-ensembles": { col: "1 / 7", row: "1 / 3" },
-    brass: { col: "7 / 10", row: "1" },
-    voice: { col: "10 / 13", row: "1" },
-    "woodwind-percussion": { col: "7 / 10", row: "2" },
-    piano: { col: "10 / 13", row: "2" },
-    "commercial-music": { col: "1 / 4", row: "3" },
-    "composition-technology": { col: "4 / 8", row: "3" },
-    "music-education": { col: "8 / 13", row: "3" },
-  };
-
   // Attract-screen panel wall — a different asymmetric split than the hub
   // wall (different panel count/spans) so it doesn't read as a rerun of it.
   const ATTRACT_PANELS = [
@@ -119,12 +105,11 @@
     function renderHub() {
       programList.innerHTML = areas
         .map((a) => {
-          const layout = WALL_LAYOUT[a.id];
-          const gridStyle = layout ? `grid-column:${layout.col};grid-row:${layout.row};` : "";
+          const sizeClass = a.size === "large" ? "size-large" : "size-normal";
           const driftDur = (16 + Math.random() * 10).toFixed(1);
           const driftDelay = (-Math.random() * driftDur).toFixed(1);
           return `
-        <div class="area-tile" data-area="${a.id}" style="--tile-color:${a.theme};${gridStyle}--drift-dur:${driftDur}s;--drift-delay:${driftDelay}s">
+        <div class="area-tile ${sizeClass}" data-area="${a.id}" style="--tile-color:${a.theme};--drift-dur:${driftDur}s;--drift-delay:${driftDelay}s">
           <button class="tile-open" data-area="${a.id}" aria-label="Preview ${a.name}">
             <svg class="ghost-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[a.icon] || ICONS.ensemble}</svg>
             <span class="tile-scrim"></span>
@@ -225,14 +210,32 @@
     }
 
     let previewSlideIndex = 0;
+    let previewAutoTimer = null;
 
+    function stopPreviewAutoplay() {
+      if (previewAutoTimer) clearInterval(previewAutoTimer);
+      previewAutoTimer = null;
+    }
+
+    // CMS field "previewPlayback" per area, default "photo":
+    //   "photo"     — today's behavior: opens on the first item, manual swipe.
+    //   "video"     — opens directly on the area's video (if it has one) and autoplays it.
+    //   "slideshow" — auto-advances through every item on a timer, hands-free.
     function renderPreviewCarousel(area, items) {
+      stopPreviewAutoplay();
+
       if (!items.length) {
         previewMedia.innerHTML = `
           <div class="preview-slide active">
             <div class="slide-fallback-icon">${icon(area.icon)}</div>
           </div>`;
         return;
+      }
+
+      const mode = area.previewPlayback || "photo";
+      if (mode === "video") {
+        const videoIndex = items.findIndex((item) => item.type === "video");
+        if (videoIndex > 0) items.unshift(items.splice(videoIndex, 1)[0]);
       }
 
       previewMedia.innerHTML = `
@@ -277,14 +280,18 @@
 
       const prevBtn = previewMedia.querySelector(".preview-nav.prev");
       const nextBtn = previewMedia.querySelector(".preview-nav.next");
-      if (prevBtn) prevBtn.addEventListener("click", () => goToPreviewSlide(previewSlideIndex - 1));
-      if (nextBtn) nextBtn.addEventListener("click", () => goToPreviewSlide(previewSlideIndex + 1));
+      if (prevBtn) prevBtn.addEventListener("click", () => { stopPreviewAutoplay(); goToPreviewSlide(previewSlideIndex - 1); });
+      if (nextBtn) nextBtn.addEventListener("click", () => { stopPreviewAutoplay(); goToPreviewSlide(previewSlideIndex + 1); });
       previewMedia.querySelectorAll(".preview-dots button").forEach((dot, i) => {
-        dot.addEventListener("click", () => goToPreviewSlide(i));
+        dot.addEventListener("click", () => { stopPreviewAutoplay(); goToPreviewSlide(i); });
       });
 
       const firstVideo = previewMedia.querySelector(".preview-slide.active video");
       if (firstVideo) firstVideo.play().catch(() => {});
+
+      if (mode === "slideshow" && items.length > 1 && !prefersReducedMotion()) {
+        previewAutoTimer = setInterval(() => goToPreviewSlide(previewSlideIndex + 1), 4200);
+      }
     }
 
     // ---- FLIP pop-out: a fixed-position clone flies from a tile's exact
@@ -387,6 +394,7 @@
     }
 
     function closePreview() {
+      stopPreviewAutoplay();
       const area = currentPreviewArea;
       currentPreviewArea = null;
       if (!area) {

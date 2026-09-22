@@ -38,14 +38,16 @@ matched, not validated against each other).
   "id": "brass",                                  // URL-safe key, unique, don't change once live (nothing else references it by index)
   "name": "Brass",                                 // Tile + page headline
   "tagline": "Trumpet, horn, trombone, ...",        // One line, shown on tile, preview, and page
+  "size": "normal",                                 // "normal" or "large" — see "Hub wall layout" below
   "icon": "brass",                                  // Must be one of the 8 keys below
   "theme": "#ffc044",                               // Must be one of the 8 official Auburn colors
   "description": "...",                             // 1-2 sentences, area page hero
   "facts": ["...", "...", "..."],                   // Short bullet list, no fixed count
-  "hero": "assets/images/areas/brass/hero.jpg",      // Full-bleed hero photo (area page + tile background + preview modal if no other photo)
+  "hero": "assets/images/areas/brass/hero.jpg",      // Full-bleed hero photo (area page + tile background + preview overlay if no other photo)
   "photos": ["assets/.../1.jpg", "assets/.../2.jpg"],// Gallery photos, any count including zero
   "video": "assets/video/areas/brass/reel.mp4",      // Optional gallery video clip
-  "poster": "assets/images/areas/brass/poster.jpg"   // Video cover frame (shown before play)
+  "poster": "assets/images/areas/brass/poster.jpg",  // Video cover frame (shown before play)
+  "previewPlayback": "photo"                        // "photo" | "video" | "slideshow" — see "Preview playback mode" below
 }
 ```
 
@@ -54,6 +56,29 @@ to a hand-drawn inline SVG — there is no way to add a 9th icon without
 editing `js/app.js` and `admin/config.yml`'s icon `select` options together):
 `brass`, `woodwind`, `voice`, `piano`, `commercial`, `composition`,
 `education`, `ensemble`.
+
+### Hub wall layout: `size`
+
+The home screen wall (`css/styles.css`'s `.stage`) is a 4-column CSS Grid
+with `grid-auto-flow: dense` — there is no hand-placed per-area layout
+anymore. Each area is either `"normal"` (1×1 cell) or `"large"` (2×2 cells,
+plus a bigger type scale via `.area-tile.size-large`), and the grid packs
+whatever mix you pick, in whatever order the `areas[]` array is in, without
+gaps between normal tiles. **Order = array order** — reorder areas by
+dragging them in the CMS's "Areas" list (or reordering the JSON array by
+hand). More than one `"large"` area is fine; the packer handles it. The one
+thing to know: if the total "cell count" (`4 × large-count + normal-count`)
+isn't a multiple of 4, the last row ends with an empty gap — this is most
+visible when a `"large"` area isn't first in the list, so if you want a
+perfectly gap-free wall, put your large area(s) toward the top of the order.
+
+### Preview playback mode: `previewPlayback`
+
+Controls what happens when a visitor taps this area's tile and it pops out
+full-screen:
+- `"photo"` (default) — opens on the first photo, manual swipe through the rest.
+- `"video"` — opens directly on this area's `video` (if it probes as real) and autoplays it, muted; silently behaves like `"photo"` if there's no working video.
+- `"slideshow"` — auto-advances through every resolved item (photos + video) on a fixed timer, hands-free; stops advancing the moment a visitor manually swipes/taps a nav arrow or dot.
 
 **Any media path that 404s is handled gracefully** — the app shows a themed
 placeholder instead of a broken image (see "media-probe-then-upgrade" in
