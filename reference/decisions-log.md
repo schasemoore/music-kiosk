@@ -84,7 +84,13 @@ exactly this shape of site (static, GitHub + Netlify, one JSON file to
 edit). A fully custom admin page was the explicit alternative considered
 and declined.
 
-## Why the tile CTA pill defaults to "Apply" not the configured `cta.label`
+## Why the tile CTA pill defaults to "Apply" not the configured `cta.label` (SUPERSEDED)
+
+**Superseded** — the tile no longer has an Apply pill/button at all, just a
+decorative arrow; see "The tile's Apply pill is gone, replaced by a
+decorative arrow" further down. Left here for history since the
+`cta.url`/`cta.label` override itself is still live for the preview overlay
+and full area page, just no longer for the tile.
 
 `cta.label` (default "Apply now") is used everywhere else. The tile's own
 corner pill defaults to the shorter "Apply" because the full label didn't
@@ -266,6 +272,181 @@ Three changes after the initial build, in one pass:
     overclaiming a pixel-level ID on a low-res photo.
   If the studio photo is ever swapped, re-verify these against whatever
   equipment is actually visible — don't just carry the copy forward.
+
+## `/assets/*` immutable caching was fighting the CMS's own edit-in-place workflow
+
+User reported the kiosk looked out of date in a regular browser ("doesn't
+show all of the changes") but correct in a private/incognito window —
+classic symptom of a stale browser cache that a fresh profile never has.
+
+Root cause: `netlify.toml` (set up in the project's very first commit, as a
+generic performance default, before Decap CMS existed) told browsers
+`Cache-Control: public, max-age=31536000, immutable` for everything under
+`/assets/*`. `immutable` is a promise that the exact URL's content will
+never change — fine for content-hashed build output, but this project has
+no build step and no hashing: a staff member swapping a program's `hero.jpg`
+through the CMS (or a hand-edit) overwrites the *same path* with new bytes.
+Any browser that had loaded the old photo before the edit would keep
+showing it for up to a year, no matter how many times the page was
+reloaded, while a browser with an empty cache always got the new one —
+exactly the reported symptom.
+
+Fixed by removing the `/assets/*` override entirely (`reference/deployment.md`),
+so it falls through to Netlify's own default headers — the same
+always-revalidate behavior `index.html`/`css/styles.css`/`js/app.js` already
+had, which is why *those* never showed this symptom. `/js/vendor/*` keeps
+its long/immutable cache on purpose — it's vendored, developer-only, never
+touched via the CMS or a routine content edit, so the "same URL, different
+content" problem doesn't apply there.
+
+**If this ever needs to be reintroduced** (e.g. a CDN-performance push),
+don't just restore the old block — either switch this project to
+content-hashed filenames first (a real build-step change, at odds with the
+"no build step" architecture — see `reference/decisions-log.md`'s "Why
+`data/content.json`, not `data/content.js`" for why that constraint exists),
+or scope any long-cache rule to a subfolder that's genuinely never
+overwritten in place (e.g. `assets/brand/*` alone, though even the logo gets
+swapped via the CMS per `reference/design-system.md`, so even that's
+riskier than it looks).
+
+**Symptom → fix, for next time**: "looks fine in private/incognito, stale in
+my regular browser" almost always means a cached asset, not an app bug —
+check response headers (`curl -I <url>` or the Network tab) for
+`Cache-Control` before assuming the code is wrong. A hard refresh
+(Cmd+Shift+R) or clearing site data confirms it immediately for whoever's
+looking at the stale copy right now; the `netlify.toml` fix above prevents
+new visitors from getting stuck the same way going forward.
+
+## The kiosk now boots straight to the attract/slideshow screen, not the hub
+
+Previously `initApp` always ended on `setActiveView("hub"); resetIdle();` —
+the hub tile grid was the first thing anyone saw, and the attract/slideshow
+screen only appeared after `idleTimeoutMs` (90s) of no interaction. User
+asked for the kiosk to open directly to the slideshow instead, matching how
+a real kiosk should behave: it's not "usage until it goes idle," it's
+"invitation screen until someone actually touches it."
+
+Implementation note, not just a one-line swap: `attractEl.classList.add
+("active")` now happens **synchronously** during `initApp`'s init block,
+before `buildAttractWall()` (async — probes every pooled image one at a
+time) is even kicked off. `goHomeAndAttract` — which also sets `.active`,
+among other things — only runs once `buildAttractWall()` resolves, via
+`.then(goHomeAndAttract)`. Doing it in this order matters: if the `.active`
+class were only added inside that `.then()`, the browser could paint the
+hub-only state first (no attract overlay yet) during the probing delay,
+then flash to the attract screen once it started — a visible flip a real
+kiosk shouldn't have. Adding `.active` up front eliminates that flash
+entirely; `goHomeAndAttract` running afterward is what actually starts the
+wall's crossfade timers and caption rotation once there's real content to
+animate.
+
+`resetIdle()` itself is unchanged — it's still only responsible for (a)
+dismissing the attract screen when the user first interacts, and (b)
+arming the next idle-timeout-triggered return to attract. Nothing calls it
+at boot anymore, which is correct: there's nothing to "time out" into,
+since the kiosk already opens there.
+
+## The tile's Apply pill is gone, replaced by a decorative arrow
+
+Every hub tile used to carry its own small "Apply"/`cta.label` pill (a real
+`<a>` link straight to the application URL, in the tile's bottom-right
+corner — see the now-superseded "Why the tile CTA pill defaults to..."
+entry above). User asked to drop it: "each tile does not need an apply
+button... just an orange arrow that really doesn't do anything except also
+opens each tile." Read literally and implemented that way —
+`.tile-arrow` (`css/styles.css`, `renderHub()` in `js/app.js`) is a plain
+`<span>` inside `.tile-open`, not its own control: no `href`, no click
+handler, no `stopPropagation`. Tapping it does exactly what tapping
+anywhere else on the tile does (`openPreview`/`openStudio`), because it's
+just decoration sitting inside the same button.
+
+This simplified the DOM too — the old pill was a *second*, separately
+z-index'd element layered on top of `.tile-open` specifically so it could
+have its own tap target without the tile's own click handler firing twice;
+none of that layering/hit-testing complexity is needed for a non-interactive
+icon. The per-area `cta.url`/`cta.label` override (`reference/content-schema.md`)
+is untouched and still does real work — it's just scoped to the preview
+overlay's Apply button and the full area page's ticket/QR now, never the
+tile. Applies to the Lucky Man Studio tile too, which never had an Apply
+pill to begin with but gets the same arrow now for visual consistency
+across the whole wall.
+
+## Admin media library was pointed at an empty, unused folder
+
+User noticed the CMS's image fields weren't showing "the current photos"
+when browsing/replacing one — correctly guessed "maybe a hardcoding issue."
+It was: `admin/config.yml`'s global `media_folder`/`public_folder` were set
+to `assets/uploads` in the project's very first commit (before any real
+content existed) and never revisited. Every actual photo/video/logo this
+project actually uses lives under `assets/images/`, `assets/video/`, and
+`assets/brand/` — confirmed by grepping `data/content.json` for
+`assets/uploads` (zero matches) and for every path prefix actually in use
+(all under the three folders above). Decap's media library browser is
+scoped to `media_folder`, so it was showing staff an empty folder no
+content had ever been saved into, while the site's real photos — living
+one level up and over — were invisible to the picker even though they
+render fine on the live kiosk itself (which doesn't go through Decap's
+asset resolution at all, just plain `<img src>` from `content.json`).
+
+Fixed by pointing `media_folder`/`public_folder` at the shared `assets`
+root instead of the narrower `assets/uploads` subfolder — Decap's media
+library supports browsing into subfolders, so staff can still navigate to
+`assets/images/areas/brass/` (etc.) and see/replace what's actually there.
+Same "early scaffolding default nobody revisited once the real workflow
+existed" pattern as the `netlify.toml` caching entry above — worth checking
+`admin/config.yml` and `netlify.toml` specifically whenever something in
+this project "looks hardcoded from day one," since both had exactly that
+problem at once.
+
+## FLIP pop-out photo distortion — inner image needs a per-frame counter-scale, not a second `.animate()` call
+
+User: "I hate how the picture distorts when the tile opens. can it scale
+cleaner?" Real bug, not a nitpick: `flipFly`'s clone box scales from the
+tapped tile's rect to the full viewport rect using `matrix(sx,0,0,sy,tx,ty)`
+— and a tile's aspect ratio essentially never matches the viewport's, so
+`sx` and `sy` differ. On this kiosk's actual (portrait) layout, measured
+`sy` values around **12-13x** with `sx` at 1x are normal, not an edge case —
+meaning the clone box (and the photo inside it, since it's `width:100%;
+height:100%` of that box) visibly squished vertically throughout the whole
+~480ms flight before snapping to a correct un-stretched image once the real
+overlay took over.
+
+First fix attempt — give the inner `<img>` its own **second**, independently
+eased `.animate()` call with the exact inverse scale keyframes (`1` →
+`1/sx, 1/sy`) — looked reasonable in theory (two eased animations in
+lockstep should cancel), but measured badly wrong in practice for this
+project's actual scale factors: two WAAPI animations each apply their own
+easing to *their own* start/end values, so the product of the two
+interpolated scales only equals 1 at the very start and end, not
+mid-flight. At `sy≈13`, checked the actual composited value halfway
+through: net Y-scale came out around **3.85**, not 1 — still a highly
+visible squish, just a different one. The reciprocal function (`1/x`) is
+too nonlinear over a 1-to-13 range for "two independently-eased linear
+interpolations" to approximate well; this only looks fine for small
+sx/sy mismatches (roughly under 2-3x), which isn't this app's real case.
+
+**Working fix**: drive the inner image's counter-scale from a
+`requestAnimationFrame` loop that reads the *outer* animation's own actual
+eased progress each frame (`anim.effect.getComputedTiming().progress` —
+already has the `cubic-bezier` easing baked in, no need to reimplement it)
+and computes the exact reciprocal of the outer's current scale at that
+instant: `curSx = 1 + (sx-1)*progress`, inner sets
+`scale(1/curSx, 1/curSy)`. This is mathematically exact at every frame, not
+an approximation — verified by reading both elements' *computed* transform
+matrices mid-flight and multiplying the corresponding components together
+(outer scaleY × inner scaleY), which came out to `0.99999...` (floating
+point rounding only) instead of the `3.85` the two-animation approach
+produced. Stops itself via the outer animation's own `finish` event
+(`cancelAnimationFrame`), so no dangling rAF loop after the clone is
+removed. Applies to both `openPreview`/`openStudio` (tile → fullscreen) and
+`closePreview`/`closeStudio` (fullscreen → tile) since both go through the
+same shared `flipFly`.
+
+If a future change to this animation reintroduces visible stretching,
+check whether it went back to a plain `.animate()`-based counter-scale
+instead of this per-frame rAF approach — it looks correct for small,
+same-order-of-magnitude sx/sy but silently reintroduces this exact bug for
+the large aspect-ratio swings this kiosk's tiles actually produce.
 
 ## Second archive pass — every area now has a full 3-photo set, all from Box
 

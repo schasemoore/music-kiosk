@@ -66,17 +66,18 @@ file in place, unless you also want to change the default.
 
 | Lines | Section |
 |---|---|
-| 8-19 | `:root` tokens |
-| 70-150 | Header, brand, buttons (`.btn`, `.btn-primary`, `.btn-outline`, `.btn-text`) |
-| 152-177 | Equalizer strip (`.eq-strip`, `@keyframes eq-bounce`) |
-| 199-380 | Hub wall / `.stage`, `.area-tile[data-area=...]` placement, `.tile-open`, `.tile-cta`, `@keyframes tile-drift` |
-| 381-573 | Area detail page: `.area-hero`, `.fact-list`, `.gallery-wall`, `.gallery-card` |
-| 574-655 | Ticket-stub CTA (`.ticket`, `.ticket-main`, `.ticket-stub`) — the perforated-ticket QR block |
+| 11-29 | `:root` tokens |
+| 70-151 | Header, brand, buttons (`.btn`, `.btn-primary`, `.btn-outline`, `.btn-text`) |
+| 152-178 | Equalizer strip (`.eq-strip`, `@keyframes eq-bounce`) |
+| 199-394 | Hub wall / `.stage`, `.area-tile` placement, `.tile-open`, `.tile-arrow` (the decorative "tap to explore" badge — replaced `.tile-cta`, see `reference/decisions-log.md`), `@keyframes tile-drift` |
+| 395-587 | Area detail page: `.area-hero`, `.fact-list`, `.gallery-wall`, `.gallery-card` |
+| 588-655 | Ticket-stub CTA (`.ticket`, `.ticket-main`, `.ticket-stub`) — the perforated-ticket QR block |
 | 656-686 | Footer (`.site-footer` — hidden on hub via `#view-hub.active ~ .site-footer { display: none }`) |
 | 687-734 | Simple gallery lightbox (`.lightbox`) |
 | 735-940 | Tile preview pop-out (`.preview-modal`, `.preview-media`, `.preview-slide`, `.preview-nav`, `.preview-dots`, `.preview-info`, `.pop-clone`) — no boxed panel; see "Pop-out" below |
-| 941-1069 | Attract multi-panel wall (`.attract`, `.slideshow`, `.attract-panel`, `.panel-slide`, `@keyframes light-sweep`, `@keyframes pulse-prompt`) |
-| 1070-1096 | Responsive breakpoints (1280px, 860px) |
+| 941-1176 | Lucky Man Studio: full photo + hotspots (`.studio-view`, `.studio-frame`, `.hotspot`, `.hotspot-ring`, `.callout-card`) — see the "Lucky Man Studio" section below |
+| 1177-1305 | Attract multi-panel wall (`.attract`, `.slideshow`, `.attract-panel`, `.panel-slide`, `@keyframes light-sweep`, `@keyframes pulse-prompt`) |
+| 1306-1337 | Responsive breakpoints (1280px, 860px) |
 
 ## Component patterns worth knowing before you add a new one
 
@@ -124,8 +125,9 @@ grows to fill the screen. Mechanism (`js/app.js`: `createVisualClone`,
 1. Read the tapped tile's `getBoundingClientRect()` and its current photo `src`.
 2. Build a `position: fixed` clone sized/positioned to match that rect exactly, above everything else (`.pop-clone`, z-index 120).
 3. Animate only the clone's `transform` (a `matrix(sx,0,0,sy,tx,ty)`, computed from the from/to rects) via the Web Animations API — never `width`/`height`, so the browser never re-layouts mid-flight.
-4. On `animationfinish`, reveal `#area-preview` (already painted with the same photo, full-frame, so the hand-off is seamless) and remove the clone. Facts/CTA fade in ~0.35s later via the `.info-visible` class, not immediately — the photo should land before the text arrives.
-5. Closing reverses this: a new clone flies from the fullscreen rect back down to the tile's current rect.
+4. Because a tile's aspect ratio essentially never matches the viewport's, `sx`/`sy` differ (often by 10x+ on this app's portrait layout) — a plain scale on a shape-changing box stretches the photo inside it. A parallel `requestAnimationFrame` loop counter-scales the clone's inner `<img>` every frame by the exact reciprocal of the outer animation's *current* eased scale (read via `anim.effect.getComputedTiming().progress`), so the photo stays visually undistorted throughout the flight instead of just snapping correct at the end. See `reference/decisions-log.md` for why this has to read per-frame progress rather than run as its own independently-eased `.animate()` call — that approach looked plausible but left the mid-flight image clearly squished.
+5. On `animationfinish`, reveal `#area-preview` (already painted with the same photo, full-frame, so the hand-off is seamless) and remove the clone. Facts/CTA fade in ~0.35s later via the `.info-visible` class, not immediately — the photo should land before the text arrives.
+6. Closing reverses this: a new clone flies from the fullscreen rect back down to the tile's current rect.
 
 Under `prefers-reduced-motion: reduce`, both `openPreview` and `closePreview`
 skip the clone entirely and just toggle `.active`/`.info-visible` (a plain

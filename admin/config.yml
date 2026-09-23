@@ -8,8 +8,14 @@ backend:
 
 local_backend: false
 
-media_folder: "assets/uploads"
-public_folder: "/assets/uploads"
+# Points at the whole assets/ root (not a narrower "uploads" subfolder) so
+# the media library's file browser can actually see every photo/video/logo
+# that's really in this repo — they all live under assets/images/,
+# assets/video/, and assets/brand/, none of them under assets/uploads/. A
+# narrower media_folder here means existing photos just don't show up when
+# staff try to browse/replace one. See reference/decisions-log.md.
+media_folder: "assets"
+public_folder: "/assets"
 
 publish_mode: simple
 
@@ -108,10 +114,10 @@ collections:
                 widget: "object"
                 required: false
                 collapsed: true
-                hint: "Leave both blank to use the site-wide Apply Button / QR Link above for this area. Fill in either one to send this area's tile, its full-screen preview, and its page (including the QR code) somewhere else and/or show different button text."
+                hint: "Leave both blank to use the site-wide Apply Button / QR Link above for this area. Fill in either one to send this area's full-screen preview and its page (including the QR code) somewhere else and/or show different button text. The home screen tile itself has no Apply button — tapping it always opens the preview."
                 fields:
                   - { label: "URL", name: "url", widget: "string", required: false }
-                  - { label: "Button label", name: "label", widget: "string", required: false, hint: "The tile's own small corner button stays \"Apply\" unless you set this." }
+                  - { label: "Button label", name: "label", widget: "string", required: false }
               - label: "Icon"
                 name: "icon"
                 widget: "select"

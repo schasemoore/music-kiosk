@@ -126,22 +126,19 @@
           const sizeClass = a.size === "large" ? "size-large" : "size-normal";
           const driftDur = (16 + Math.random() * 10).toFixed(1);
           const driftDelay = (-Math.random() * driftDur).toFixed(1);
-          // The tile pill keeps its own short default ("Apply") regardless of
-          // the site-wide cta.label — same rationale as always (space), but
-          // now an area can override it via area.cta.label if it wants to.
-          const tileCtaUrl = (a.cta && a.cta.url) || cta.url;
-          const tileCtaLabel = (a.cta && a.cta.label) || "Apply";
           return `
         <div class="area-tile ${sizeClass}" data-area="${a.id}" style="--tile-color:${a.theme};--drift-dur:${driftDur}s;--drift-delay:${driftDelay}s">
           <button class="tile-open" data-area="${a.id}" aria-label="Preview ${a.name}">
             <svg class="ghost-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS[a.icon] || ICONS.ensemble}</svg>
             <span class="tile-scrim"></span>
+            <span class="tile-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </span>
             <span class="tile-text">
               <h3>${a.name}</h3>
               <span class="tagline">${a.tagline}</span>
             </span>
           </button>
-          <a class="tile-cta btn" href="${tileCtaUrl}" target="_blank" rel="noopener" aria-label="Apply to ${a.name}">${tileCtaLabel}</a>
         </div>`;
         })
         .join("");
@@ -159,6 +156,9 @@
           <button class="tile-open" id="studio-tile-open" aria-label="Open ${luckyManStudio.name}">
             <svg class="ghost-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS.studio}</svg>
             <span class="tile-scrim"></span>
+            <span class="tile-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+            </span>
             <span class="tile-text">
               <h3>${luckyManStudio.name}</h3>
               <span class="tagline">${luckyManStudio.tagline || ""}</span>
@@ -368,11 +368,11 @@
       if (photoSrc) {
         const img = document.createElement("img");
         img.src = photoSrc;
-        img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;";
+        img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:0 0;will-change:transform;";
         clone.appendChild(img);
       } else {
         const grad = document.createElement("div");
-        grad.style.cssText = `position:absolute;inset:0;background-image:linear-gradient(150deg, color-mix(in srgb, ${themeColor} 65%, white 12%), ${themeColor} 55%, color-mix(in srgb, ${themeColor} 82%, black 30%));`;
+        grad.style.cssText = `position:absolute;inset:0;background-image:linear-gradient(150deg, color-mix(in srgb, ${themeColor} 65%, white 12%), ${themeColor} 55%, color-mix(in srgb, ${themeColor} 82%, black 30%));transform-origin:0 0;will-change:transform;`;
         clone.appendChild(grad);
       }
       return clone;
@@ -395,11 +395,43 @@
       const sy = toRect.height / fromRect.height;
       const tx = toRect.left - fromRect.left;
       const ty = toRect.top - fromRect.top;
+      const duration = 480;
+      const easing = "cubic-bezier(.2,.8,.2,1)";
 
       const anim = clone.animate(
         [{ transform: "matrix(1,0,0,1,0,0)" }, { transform: `matrix(${sx},0,0,${sy},${tx},${ty})` }],
-        { duration: 480, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" }
+        { duration, easing, fill: "forwards" }
       );
+
+      // The tile's aspect ratio rarely matches the viewport's (on this
+      // portrait kiosk layout sx/sy can differ by 10x+), so the outer box's
+      // shape has to change during the flight — a plain scale on a
+      // shape-changing box stretches the photo inside it non-uniformly
+      // (squish/stretch). Counter-scaling the inner image by the exact
+      // inverse of the outer's *current* scale, every frame, cancels it
+      // completely. This has to be a rAF loop reading the outer animation's
+      // own eased progress each tick, not a second independent .animate()
+      // call on the inner element — two separately-eased WAAPI animations
+      // don't multiply out to 1 except at the very start/end, and for a
+      // large sx/sy mismatch like this app's the mid-flight residual
+      // distortion from that approach was still clearly visible.
+      const inner = clone.firstElementChild;
+      if (inner && sx !== sy) {
+        let rafId;
+        const tick = () => {
+          const timing = anim.effect.getComputedTiming();
+          const p = typeof timing.progress === "number" ? timing.progress : 1;
+          const curSx = 1 + (sx - 1) * p;
+          const curSy = 1 + (sy - 1) * p;
+          inner.style.transform = `scale(${1 / curSx}, ${1 / curSy})`;
+          if (anim.playState === "running" || anim.playState === "pending") {
+            rafId = requestAnimationFrame(tick);
+          }
+        };
+        tick();
+        anim.addEventListener("finish", () => cancelAnimationFrame(rafId), { once: true });
+      }
+
       anim.onfinish = () => {
         clone.remove();
         if (onLanded) onLanded();
@@ -896,10 +928,19 @@
     // -------------------------------------------------------------- init
 
     renderHub();
-    buildAttractWall();
     renderEqualizer(document.getElementById("eq-strip-hub"), 40);
     renderEqualizer(document.getElementById("eq-strip-attract"), 24);
     setActiveView("hub");
-    resetIdle();
+    // Boot straight to the attract/slideshow screen, not the hub — a kiosk
+    // should open on its "come look" screen, not drop a visitor straight
+    // into the tile grid. .active goes on synchronously, before
+    // buildAttractWall's async image probing even starts, so there's no
+    // flash of the hub underneath while the wall's photos are still
+    // loading; goHomeAndAttract (called once probing finishes) then starts
+    // the wall/caption timers on top of that. The idle timer itself only
+    // gets armed once the user actually dismisses this and reaches the hub
+    // — see resetIdle's wiring below, unchanged.
+    attractEl.classList.add("active");
+    buildAttractWall().then(goHomeAndAttract);
   }
 })();

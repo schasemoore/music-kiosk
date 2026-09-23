@@ -15,7 +15,7 @@ matched, not validated against each other).
 | `department.name` | string | Header text ("Department of Music") |
 | `department.heroTitle` / `heroSub` | string | Home screen headline + subhead |
 | `cta.url` | string (URL) | **Currently a placeholder** (`https://your-link-here.auburn.edu/apply`) — the site-wide fallback every Apply button and QR code reads, unless an area sets its own `areas[].cta` override (below) |
-| `cta.label` | string | Text on the full-size Apply buttons (the tile's own CTA pill defaults to "Apply" regardless — see `reference/design-system.md` tile section) |
+| `cta.label` | string | Text on the full-size Apply buttons (preview overlay + full area page — the home screen tile itself has no Apply button, just a decorative arrow; see `reference/decisions-log.md`) |
 | `idleTimeoutMs` | int | Ms of no touch before returning to the splash screen (currently 90000) |
 | `splashIntervalMs` | int | Ms each splash slide stays up (currently 7000) |
 | `galleryCaptions` | string[] | Cycled across each area's gallery photos in order (photo 1 → caption[0], photo 2 → caption[1], wraps if more photos than captions) |
@@ -78,15 +78,14 @@ perfectly gap-free wall, put your large area(s) toward the top of the order.
 Optional, and both `url` and `label` inside it are independently optional —
 leave the whole field out, or leave either sub-field blank, to fall back to
 the site-wide `cta.url`/`cta.label` at the top of this file. When set, it
-overrides **everywhere this area's Apply link appears**: the home screen
-tile's corner pill, the "Apply now" button in its full-screen preview
-overlay, and the "Apply now" button + QR code on its full area page — all
-four read the same resolved value (`resolveCta(area)` in `js/app.js`), so a
-program can point at its own application link without the tile, preview,
-and page disagreeing with each other. The tile pill's own short default
-("Apply", not the longer site-wide `cta.label`) only applies when `label`
-is left blank — set a `label` here and the tile pill uses it verbatim, so
-keep it short enough to fit a small corner button.
+overrides **everywhere this area's Apply link appears**: the "Apply now"
+button in its full-screen preview overlay, and the "Apply now" button + QR
+code on its full area page — both read the same resolved value
+(`resolveCta(area)` in `js/app.js`), so a program can point at its own
+application link without the preview and page disagreeing with each other.
+The home screen tile itself has no Apply button (just a decorative arrow —
+see `reference/decisions-log.md`), so this override doesn't touch the tile
+at all.
 
 ### Preview playback mode: `previewPlayback`
 

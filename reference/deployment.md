@@ -60,6 +60,21 @@ If asked "does /admin work yet" — check whether steps 1-3 are done on the
 live Netlify dashboard (I can't check this myself, no Netlify access; ask
 the user or have them screenshot Site configuration → Identity).
 
+## Caching (`netlify.toml`)
+
+`/assets/*` deliberately has **no** custom `Cache-Control` header — it falls
+through to Netlify's own default (always-revalidate), same as
+`index.html`/`css/styles.css`/`js/app.js` already get. It used to be
+`public, max-age=31536000, immutable` (set in the very first commit, before
+Decap CMS existed); once staff started editing photos in place through the
+CMS — same path, new file content, not a renamed/hashed URL — that
+`immutable` promise became actively wrong, and a browser that had visited
+before could sit on a stale photo for up to a year after an edit while a
+fresh/incognito browser always saw the update. Fixed by dropping the
+override. `/js/vendor/*` (the vendored `qrcode.js`) keeps the long/immutable
+cache — nothing there is ever hand-edited in place. See
+`reference/decisions-log.md` for the full incident.
+
 ## Local dev server
 
 ```bash

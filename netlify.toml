@@ -2,10 +2,13 @@
   publish = "."
   command = ""
 
-[[headers]]
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+# No "immutable"/long-max-age caching on /assets/* — photos, the logo, and
+# uploads under here get edited in place (same path, new content) via Decap
+# CMS or a hand-edit, not renamed/hashed on change. An immutable cache meant
+# a browser that had visited before could sit on a stale photo for up to a
+# year after an edit. Falls through to Netlify's own default headers
+# (always-revalidate), same as index.html/css/js already get. See
+# reference/decisions-log.md.
 
 [[headers]]
   for = "/js/vendor/*"
