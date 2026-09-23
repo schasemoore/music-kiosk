@@ -2,12 +2,12 @@
   "logo": "/assets/uploads/au_logo_fullcolor_blue.png",
   "department": {
     "name": "Department of Music",
-    "heroTitle": "Find your sound.",
+    "heroTitle": "Be a Part of the Music.",
     "heroSub": "Eight programs, one Auburn stage. Tap one to step in."
   },
   "cta": {
-    "url": "https://your-link-here.auburn.edu/apply",
-    "label": "Apply now"
+    "url": "https://cla.auburn.edu/music/future-students/apply-and-audition/",
+    "label": "Learn How to Apply"
   },
   "idleTimeoutMs": 90000,
   "splashIntervalMs": 7000,
@@ -213,7 +213,7 @@
       "theme": "#0b2341",
       "name": "Music Education",
       "poster": "assets/images/areas/music-education/poster.jpg",
-      "tagline": "Become a K-12 instrumental or vocal music teacher",
+      "tagline": "Become an instrumental or vocal music teacher",
       "icon": "education",
       "hero": "assets/images/areas/music-education/hero.jpg",
       "video": "assets/video/areas/music-education/reel.mp4",
