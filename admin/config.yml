@@ -160,7 +160,7 @@ collections:
           - label: "Lucky Man Studio"
             name: "luckyManStudio"
             widget: "object"
-            hint: "A separate, one-off home screen tile. Unlike the areas above, tapping it opens straight to a full picture of the studio with tappable hotspots — there's no carousel, facts list, or Apply button here."
+            hint: "A separate, one-off home screen tile. Unlike the areas above, tapping it opens straight to a full-screen picture of the studio with tappable hotspots (instead of a photo carousel and facts list). It uses the site-wide Apply button above."
             fields:
               - { label: "Tile name", name: "name", widget: "string", default: "Lucky Man Studio" }
               - { label: "Tile tagline", name: "tagline", widget: "string" }
@@ -181,7 +181,7 @@ collections:
                 name: "hotspots"
                 widget: "list"
                 summary: "{{title}}"
-                hint: "Tappable markers over the studio photo, one per piece of equipment or point of interest. Position is set as a percentage of the photo (0,0 = top-left corner, 100,100 = bottom-right) — open the photo, estimate where the spot is, and adjust the number until it lines up."
+                hint: "Tappable markers over the studio photo, one per piece of equipment or point of interest. Position is set as a percentage of the photo (0,0 = top-left corner, 100,100 = bottom-right) — open the photo, estimate where the spot is, and adjust the number until it lines up. The photo is shown full-screen and cropped to the display, so keep spots at least ~5% in from the edges."
                 fields:
                   - { label: "Horizontal position % (0 = left edge, 100 = right edge)", name: "x", widget: "number", value_type: "float", min: 0, max: 100 }
                   - { label: "Vertical position % (0 = top edge, 100 = bottom edge)", name: "y", widget: "number", value_type: "float", min: 0, max: 100 }

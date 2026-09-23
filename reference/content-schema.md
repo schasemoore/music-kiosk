@@ -14,7 +14,7 @@ matched, not validated against each other).
 | `logo` | path | Header + splash-screen logo image |
 | `department.name` | string | Header text ("Department of Music") |
 | `department.heroTitle` / `heroSub` | string | Home screen headline + subhead |
-| `cta.url` | string (URL) | **Currently a placeholder** (`https://your-link-here.auburn.edu/apply`) — the site-wide fallback every Apply button and QR code reads, unless an area sets its own `areas[].cta` override (below) |
+| `cta.url` | string (URL) | The site-wide Apply link every Apply button and QR code reads, unless an area sets its own `areas[].cta` override (below). Currently `https://cla.auburn.edu/music/future-students/apply-and-audition/` with label "Learn How to Apply" (set through the CMS) |
 | `cta.label` | string | Text on the full-size Apply buttons (preview overlay + full area page — the home screen tile itself has no Apply button, just a decorative arrow; see `reference/decisions-log.md`) |
 | `idleTimeoutMs` | int | Ms of no touch before returning to the splash screen (currently 90000) |
 | `splashIntervalMs` | int | Ms each splash slide stays up (currently 7000) |
@@ -125,14 +125,25 @@ just falls back further down the chain (hero → first photo → gradient).
 
 A single object, not a list — there's only one studio. It still renders as a
 tile in `.stage` (appended after the 8 `areas[]` tiles, same `.area-tile`
-markup, same `size`/`theme` rules), but tapping it is a completely different
-flow from every area: no carousel, no facts list, no Apply button. It pops
-(same FLIP mechanism, `openStudio`/`closeStudio` in `js/app.js`) straight to
-the full photo with tappable hotspot markers over real equipment. See
-`reference/design-system.md`'s "Lucky Man Studio" section for how the
-photo-frame sizing and hotspot markers work, and
-`reference/decisions-log.md` for why this is a separate top-level field
-instead of a 9th `areas[]` entry.
+markup, same `size`/`theme` rules), and tapping it pops (same FLIP mechanism,
+`openStudio`/`closeStudio` in `js/app.js`) to a full-bleed photo that has the
+same structure as any other tile's pop-out — close button, bottom
+eyebrow/name/tagline, and an Apply button (the site-wide `cta`; the studio has
+no `cta` override of its own) — with tappable hotspot markers layered over the
+photo instead of a carousel/facts list. There is no "More about this program"
+(no separate studio page). The pop-out's intro line ("Tap the glowing markers
+to explore…") is fixed text in `js/app.js`, not the `tagline` field above —
+that's the hub tile's description. See `reference/design-system.md`'s "Lucky
+Man Studio" section for how the cover-crop/pan mapping and hotspot markers
+work, and `reference/decisions-log.md` for why this is a separate top-level
+field instead of a 9th `areas[]` entry.
+
+**Hotspot `x`/`y` are positions on the original photo**, not on the screen —
+the photo is shown full-bleed and cropped to the display's aspect ratio (and
+can be dragged to pan when the crop hides part of it), and the app re-maps
+each point to wherever it lands on screen. Keep hotspots away from the very
+edges of the photo (roughly under 5% or over 95%) so a modest crop doesn't
+push one out of the default view.
 
 **Hotspot `x`/`y` have no visual picker** — there's no way to click-to-place
 a hotspot in the CMS, only numeric percentage fields. Open the photo, eyeball

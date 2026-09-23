@@ -74,15 +74,15 @@ file in place, unless you also want to change the default.
 | 588-655 | Ticket-stub CTA (`.ticket`, `.ticket-main`, `.ticket-stub`) — the perforated-ticket QR block |
 | 656-686 | Footer (`.site-footer` — hidden on hub via `#view-hub.active ~ .site-footer { display: none }`) |
 | 687-734 | Simple gallery lightbox (`.lightbox`) |
-| 735-940 | Tile preview pop-out (`.preview-modal`, `.preview-media`, `.preview-slide`, `.preview-nav`, `.preview-dots`, `.preview-info`, `.pop-clone`) — no boxed panel; see "Pop-out" below |
-| 941-1176 | Lucky Man Studio: full photo + hotspots (`.studio-view`, `.studio-frame`, `.hotspot`, `.hotspot-ring`, `.callout-card`) — see the "Lucky Man Studio" section below |
-| 1177-1305 | Attract multi-panel wall (`.attract`, `.slideshow`, `.attract-panel`, `.panel-slide`, `@keyframes light-sweep`, `@keyframes pulse-prompt`) |
-| 1306-1337 | Responsive breakpoints (1280px, 860px) |
+| 735-956 | Tile preview pop-out (`.preview-modal`, `.preview-media`, `.preview-slide`, `.preview-nav`, `.preview-dots`, `.preview-info`, `.pop-clone`) — no boxed panel; see "Pop-out" below |
+| 957-1191 | Lucky Man Studio: full photo + hotspots (`.studio-photo`, `#studio-media`, `.hotspot`, `.hotspot-ring`, `.callout-card`, `#studio-tagline`) — layered on the shared `.preview-modal` styles, no bespoke overlay — see the "Lucky Man Studio" section below |
+| 1192-1320 | Attract multi-panel wall (`.attract`, `.slideshow`, `.attract-panel`, `.panel-slide`, `@keyframes light-sweep`, `@keyframes pulse-prompt`) |
+| 1321-1352 | Responsive breakpoints (1280px, 860px) |
 
 ## Component patterns worth knowing before you add a new one
 
 - **Themed gradient fallback**: `background-image: linear-gradient(150deg, color-mix(in srgb, var(--theme) 60%, white 14%), var(--theme) 60%, color-mix(in srgb, var(--theme) 80%, black 35%))` — used on tiles, hero, preview media, gallery cards. Requires a modern Chromium (fine for a controlled kiosk browser + this dev environment); don't swap to a plain flat color without a reason.
-- **Scrim-for-legibility**: any text sitting on a photo/gradient gets a `linear-gradient(0deg, rgba(0,0,0,.6) 0%, transparent 70%)` scrim behind it, not a solid box. See `.tile-scrim`, `.hero-scrim`, `.card-scrim`, `.preview-info`'s background.
+- **Scrim-for-legibility**: any text sitting on a photo/gradient gets a `linear-gradient(0deg, rgba(0,0,0,.6) 0%, transparent 70%)` scrim behind it, not a solid box. See `.tile-scrim`, `.hero-scrim`, `.card-scrim`, `.preview-info::before` (painted full-viewport-width behind the width-capped content so it doesn't end in a hard seam on wide screens).
 - **Ghost icon**: a large, low-opacity (`0.14-0.16`) watermark of the area's own icon, positioned top-right, behind the scrim. Purely decorative texture — `.ghost-icon`, `.hero-ghost`.
 - **Media-probe-then-upgrade**: nothing waits on a network request to render. Placeholder/gradient shows immediately; `probeImage`/`probeVideo` resolve async and swap in real media if it exists. Follow this pattern for any new media slot — never `await` a probe before first paint.
 
@@ -119,15 +119,15 @@ a `grid-row: span N` back.
 
 Tapping a tile doesn't fade in a boxed modal — the tile's own photo (or
 themed gradient, if no photo has loaded yet) detaches from the wall and
-grows to fill the screen. Mechanism (`js/app.js`: `createVisualClone`,
-`flipFly`, `openPreview`, `closePreview`):
+grows to fill the screen. Mechanism (`js/app.js`: `flipFly`, `openPreview`,
+`closePreview`, and the studio's `openStudio`/`closeStudio`):
 
-1. Read the tapped tile's `getBoundingClientRect()` and its current photo `src`.
-2. Build a `position: fixed` clone sized/positioned to match that rect exactly, above everything else (`.pop-clone`, z-index 120).
-3. Animate only the clone's `transform` (a `matrix(sx,0,0,sy,tx,ty)`, computed from the from/to rects) via the Web Animations API — never `width`/`height`, so the browser never re-layouts mid-flight.
-4. Because a tile's aspect ratio essentially never matches the viewport's, `sx`/`sy` differ (often by 10x+ on this app's portrait layout) — a plain scale on a shape-changing box stretches the photo inside it. A parallel `requestAnimationFrame` loop counter-scales the clone's inner `<img>` every frame by the exact reciprocal of the outer animation's *current* eased scale (read via `anim.effect.getComputedTiming().progress`), so the photo stays visually undistorted throughout the flight instead of just snapping correct at the end. See `reference/decisions-log.md` for why this has to read per-frame progress rather than run as its own independently-eased `.animate()` call — that approach looked plausible but left the mid-flight image clearly squished.
-5. On `animationfinish`, reveal `#area-preview` (already painted with the same photo, full-frame, so the hand-off is seamless) and remove the clone. Facts/CTA fade in ~0.35s later via the `.info-visible` class, not immediately — the photo should land before the text arrives.
-6. Closing reverses this: a new clone flies from the fullscreen rect back down to the tile's current rect.
+1. Read the tapped tile's `getBoundingClientRect()`, its current photo `src`, and the tile photo element's own *current* rendered rect.
+2. Build a `position: fixed` clone (`.pop-clone`, z-index 120) sized/positioned to match the tile's rect, `overflow: hidden`, with the photo as an absolutely-positioned `<img object-fit: cover>` layer inside it.
+3. Animate real `left`/`top`/`width`/`height` (WAAPI, 520ms, `cubic-bezier(.4,0,.2,1)`) on both the clone box **and** the photo layer, so `object-fit: cover` recomputes natively each frame. This replaced an earlier `transform: matrix(sx,0,0,sy,…)` version: a tile's aspect ratio essentially never matches the viewport's (10x+ apart on this app's portrait layout), so a non-uniform scale stretched the photo, and every attempt to cancel that with counter-scale math (a second animation, then a per-frame rAF loop) stayed undistorted but still looked wrong. See `reference/decisions-log.md`.
+4. The clone must start and end looking *exactly like the tile*, not just occupy its rect. The tile photo is a 110%-sized, drifting Ken Burns layer (`.tile-photo` / `tile-drift`), not a plain cover crop — so the clone's photo layer starts at the tile photo's real rendered rect (which includes the drift transform) and animates to the full-frame fit, and a copy of the tile's `.tile-scrim`/`.tile-arrow`/`.tile-text` fades out (open, 200ms) or back in over the last 240ms (close). Skipping this made the image visibly jump on frame 1 and the text vanish instantly.
+5. On `animationfinish`, reveal `#area-preview` / `#studio-view` (already painted with the same photo, full-frame, so the hand-off is seamless) and remove the clone. Facts/CTA fade in ~0.35s later via the `.info-visible` class, not immediately — the photo should land before the text arrives.
+6. Closing reverses this: a new clone flies from the fullscreen rect back down to the tile's current rect, and if the visitor had swiped to a different carousel slide, the tile's own photo crossfades in over the flight instead of hard-cutting at the end.
 
 Under `prefers-reduced-motion: reduce`, both `openPreview` and `closePreview`
 skip the clone entirely and just toggle `.active`/`.info-visible` (a plain
@@ -143,24 +143,44 @@ what mode an area is in.
 
 ## Lucky Man Studio: full photo + hotspots
 
-One special hub tile (`reference/content-schema.md`'s `luckyManStudio`) that
-breaks from every other tile's flow on purpose — tapping it doesn't open the
-carousel/facts/Apply preview, it pops (same FLIP mechanism as the tile
-preview) straight to a full, never-cropped picture of the studio with
-tappable markers over real equipment.
+One special hub tile (`reference/content-schema.md`'s `luckyManStudio`) whose
+pop-out is a full-bleed photo with tappable markers over real equipment,
+instead of a carousel/facts list. It deliberately *looks and behaves like
+every other tile's pop-out* — `#studio-view` is a `.preview-modal` and reuses
+`.preview-close`, `.preview-media`, `.preview-info`, `.preview-eyebrow`,
+`.tagline`, `.preview-actions`, and `.btn` directly rather than a parallel set
+of near-duplicate rules, so the two can't drift apart. It shares the same
+`flipFly` pop-out and `.info-visible` reveal timing, has the same close
+button, the same bottom eyebrow/name/tagline scrim, and an Apply button (site-wide
+`cta`). Differences: hotspots over the photo, an actionable intro line, and
+no "More about this program" (there is no separate studio page).
 
-**Letterboxed, not cropped**: `#studio-frame` gets its `aspect-ratio` set
-from JS (`layoutStudioFrame` in `js/app.js`) to match the photo's own
-natural dimensions, then sizes itself via `max-width/max-height: 100%`
-inside a flex-centered `#studio-view` — this reproduces `object-fit: contain`
-letterboxing while staying a real box. That matters because hotspots are
-positioned with plain `left`/`top` percentages against that box: with
-`object-fit: cover` instead, the visible crop shifts with viewport size and
-a fixed percentage would drift off the equipment it's meant to point at.
+**Full-bleed cover, with drag-to-pan** (this used to be a letterboxed
+`contain`-style frame so hotspot percentages could never drift; the user
+wanted it to open full screen like every other tile, so it's `cover` now):
+the photo crops to fill the screen, so a hotspot's raw `x`/`y`% (a position
+on the *original* photo) is re-mapped in `positionHotspots` through the same
+scale-and-align math the browser uses for `object-fit: cover` +
+`object-position` (driven by `studioPan`). When the crop hides part of the
+photo — a portrait display shows only the middle third of a landscape photo,
+which would otherwise strand hotspots off-screen — the visitor can drag the
+photo to pan, hotspots move with it, and the intro line switches to a "Swipe
+to look around…" variant. `studioPan` resets to centered on every open so the
+overlay's crop matches the pop-out clone's at hand-off.
+
+**Making the interaction obvious** (user: "more obvious that there are
+hotspot interactions"): markers are large (26px dot in a 3px white ring, 52px
+pulsing ring, 64px tap target, soft white glow so navy reads on dark gear);
+they pop in one after another (staggered `--i`, `scale` overshoot) just after
+the photo lands, before the idle pulse takes over; and the intro line is
+larger/bolder and led by a mini marker that pulses exactly like the real
+ones (`#studio-tagline::before`), so "glowing markers" in the text maps to
+the dots on the photo. The intro line is a fixed string in JS, not
+`luckyManStudio.tagline` (that's the hub tile's description).
 
 **Hotspot marker, two states** (`.hotspot`, `css/styles.css` — see the
 "Lucky Man Studio" section):
-- **Closed** (default): a small filled dot in the hotspot's own color
+- **Closed** (default): a filled dot in the hotspot's own color
   (`--hc`, one of Auburn's 8 colors) with a white ring around it that
   continuously pulses outward (`@keyframes hotspot-pulse`) — the "this is
   tappable" signal, since nothing else marks it as interactive.
@@ -176,8 +196,9 @@ a fixed percentage would drift off the equipment it's meant to point at.
   cluttered rack, anything). Only one hotspot stays open at a time —
   opening another closes whatever was open, and tapping the photo itself
   closes the open one.
-- **Edge case — `.flip`**: a hotspot past 62% across the photo gets a
-  `.flip` class (set in `renderHotspots`) that mirrors the whole callout to
+- **Edge case — `.flip`**: a hotspot past 62% across the *screen* (its
+  on-screen position after the cover-crop/pan mapping, not its raw photo x) gets a
+  `.flip` class (set in `positionHotspots`) that mirrors the whole callout to
   grow leftward and right-align its card instead, so it doesn't run off the
   edge of the frame.
 

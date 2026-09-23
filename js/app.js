@@ -47,12 +47,13 @@
   const previewLearnMore = document.getElementById("preview-learn-more");
   const previewApply = document.getElementById("preview-apply");
   const studioViewEl = document.getElementById("studio-view");
-  const studioFrame = document.getElementById("studio-frame");
+  const studioMedia = document.getElementById("studio-media");
   const studioPhoto = document.getElementById("studio-photo");
   const hotspotLayer = document.getElementById("hotspot-layer");
   const studioEyebrow = document.getElementById("studio-eyebrow");
   const studioName = document.getElementById("studio-name");
   const studioTagline = document.getElementById("studio-tagline");
+  const studioApply = document.getElementById("studio-apply");
 
   // ---------------------------------------------------------------- media loading helpers
   // Try an image, then a video, then fall back to a themed color card. Used
@@ -357,79 +358,112 @@
 
     // ---- FLIP pop-out: a fixed-position clone flies from a tile's exact
     // rect to fill the viewport (or back again), via the Web Animations API
-    // animating only `transform` (a matrix mapping the clone's box from its
-    // start rect onto its end rect) — never width/height, so it stays off
-    // the layout thread. Used by both openPreview (tile -> fullscreen) and
-    // closePreview (fullscreen -> tile).
+    // animating real `left`/`top`/`width`/`height` — not `transform: scale`.
+    // A tile's aspect ratio essentially never matches the viewport's (on
+    // this kiosk's portrait layout the two can differ by 10x+), and a
+    // `transform: scale(sx,sy)` on a shape-changing box stretches the photo
+    // inside it non-uniformly. Countering that stretch with extra transform
+    // math (tried: a second inverse-scaled animation, then a per-frame rAF
+    // loop computing the exact inverse) kept the image undistorted but
+    // still looked wrong — the crop window it's forced to reveal shifts
+    // unnaturally as a shape-changing box's non-uniform scale changes.
+    // Animating real width/height instead sidesteps the whole problem:
+    // `object-fit: cover` on the inner `<img>` recomputes correctly, with
+    // zero custom math, for whatever box size the browser is actually
+    // laying out at each frame — the same way it would for any ordinary
+    // resize. It's one `position: fixed` element, isolated from document
+    // flow, so relayout is cheap; this was worth it for correctness.
+    //
+    // The flight also has to *start and end* looking exactly like the tile,
+    // not just have the right rect. The hub tile's photo isn't a plain
+    // cover-fit of the raw image: it's a 110%-sized, continuously
+    // drifting/zooming Ken Burns layer (`.tile-photo`, `tile-drift`), plus a
+    // scrim, name, tagline, and arrow on top. A clone that begins as a bare,
+    // un-zoomed cover crop of the photo visibly jumps on frame 1 (different
+    // zoom/crop) and the tile's text vanishes instantly. So: with a `tileEl`,
+    // the clone's photo layer is placed at the tile photo's *actual current*
+    // rendered rect (read via getBoundingClientRect, which includes the drift
+    // transform) and animates to/from the full-frame fit, and a copy of the
+    // tile's scrim/text/arrow is faded out (opening) or back in (closing)
+    // over the flight. Used by openPreview/openStudio (tile -> fullscreen)
+    // and closePreview/closeStudio (fullscreen -> tile).
+    //
+    // opts: { tileEl, mode: "open"|"close", tilePhotoSrc } — all optional.
+    // `tilePhotoSrc` (close only) is the tile's own photo when it differs
+    // from `photoSrc` (e.g. the visitor swiped to another carousel slide):
+    // the tile's photo crossfades in over the flight so the clone lands on
+    // what the tile actually shows instead of hard-cutting at the end.
 
-    function createVisualClone(photoSrc, themeColor) {
+    function flipFly(fromRect, toRect, photoSrc, themeColor, onLanded, opts) {
+      const { tileEl, mode, tilePhotoSrc } = opts || {};
+      // Material's standard ease (slow start, fast middle, soft landing).
+      // The previous cubic-bezier(.2,.8,.2,1) was so front-loaded that ~78%
+      // of a tile-to-fullscreen growth happened in the first 120ms and the
+      // rest crawled — read as a lurch-then-drag rather than a smooth grow.
+      const duration = 520;
+      const easing = "cubic-bezier(.4,0,.2,1)";
+      const px = (r) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+
+      const tileRect = mode === "close" ? toRect : fromRect;
+      const tilePhotoEl = tileEl && tileEl.querySelector(".tile-photo");
+      const pr = tilePhotoEl ? tilePhotoEl.getBoundingClientRect() : null;
+      const smallPhoto = pr
+        ? { left: pr.left - tileRect.left, top: pr.top - tileRect.top, width: pr.width, height: pr.height }
+        : { left: 0, top: 0, width: tileRect.width, height: tileRect.height };
+      const fullFrom = { left: 0, top: 0, width: fromRect.width, height: fromRect.height };
+      const fullTo = { left: 0, top: 0, width: toRect.width, height: toRect.height };
+      const photoFrom = mode === "open" ? smallPhoto : fullFrom;
+      const photoTo = mode === "close" ? smallPhoto : fullTo;
+
       const clone = document.createElement("div");
       clone.className = "pop-clone";
-      if (photoSrc) {
-        const img = document.createElement("img");
-        img.src = photoSrc;
-        img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:0 0;will-change:transform;";
-        clone.appendChild(img);
-      } else {
-        const grad = document.createElement("div");
-        grad.style.cssText = `position:absolute;inset:0;background-image:linear-gradient(150deg, color-mix(in srgb, ${themeColor} 65%, white 12%), ${themeColor} 55%, color-mix(in srgb, ${themeColor} 82%, black 30%));transform-origin:0 0;will-change:transform;`;
-        clone.appendChild(grad);
-      }
-      return clone;
-    }
+      Object.assign(clone.style, px(fromRect), { position: "fixed", overflow: "hidden", zIndex: "120" });
+      clone.style.willChange = "left, top, width, height";
 
-    function flipFly(fromRect, toRect, photoSrc, themeColor, onLanded) {
-      const clone = createVisualClone(photoSrc, themeColor);
-      clone.style.position = "fixed";
-      clone.style.left = fromRect.left + "px";
-      clone.style.top = fromRect.top + "px";
-      clone.style.width = fromRect.width + "px";
-      clone.style.height = fromRect.height + "px";
-      clone.style.transformOrigin = "0 0";
-      clone.style.overflow = "hidden";
-      clone.style.zIndex = "120";
-      clone.style.willChange = "transform";
+      const layers = [];
+      const addPhotoLayer = (src) => {
+        const el = document.createElement(src ? "img" : "div");
+        if (src) el.src = src;
+        else el.style.backgroundImage = `linear-gradient(150deg, color-mix(in srgb, ${themeColor} 65%, white 12%), ${themeColor} 55%, color-mix(in srgb, ${themeColor} 82%, black 30%))`;
+        el.style.cssText += ";position:absolute;object-fit:cover;";
+        Object.assign(el.style, px(photoFrom));
+        clone.appendChild(el);
+        layers.push(el);
+        return el;
+      };
+      addPhotoLayer(photoSrc);
+      const tileLayer = mode === "close" && tilePhotoSrc && tilePhotoSrc !== photoSrc ? addPhotoLayer(tilePhotoSrc) : null;
+
+      // Tile chrome (scrim/arrow/name/tagline), copied so it inherits the
+      // tile's own descendant-selector styles, and faded rather than cut.
+      let chrome = null;
+      if (tileEl) {
+        chrome = document.createElement("div");
+        chrome.className = "area-tile" + (tileEl.classList.contains("size-large") ? " size-large" : "");
+        chrome.style.cssText = "position:absolute;inset:0;background:none;pointer-events:none;";
+        [".tile-scrim", ".tile-arrow", ".tile-text"].forEach((sel) => {
+          const node = tileEl.querySelector(sel);
+          if (node) chrome.appendChild(node.cloneNode(true));
+        });
+        chrome.style.opacity = mode === "close" ? "0" : "1";
+        clone.appendChild(chrome);
+      }
       document.body.appendChild(clone);
 
-      const sx = toRect.width / fromRect.width;
-      const sy = toRect.height / fromRect.height;
-      const tx = toRect.left - fromRect.left;
-      const ty = toRect.top - fromRect.top;
-      const duration = 480;
-      const easing = "cubic-bezier(.2,.8,.2,1)";
-
-      const anim = clone.animate(
-        [{ transform: "matrix(1,0,0,1,0,0)" }, { transform: `matrix(${sx},0,0,${sy},${tx},${ty})` }],
-        { duration, easing, fill: "forwards" }
-      );
-
-      // The tile's aspect ratio rarely matches the viewport's (on this
-      // portrait kiosk layout sx/sy can differ by 10x+), so the outer box's
-      // shape has to change during the flight — a plain scale on a
-      // shape-changing box stretches the photo inside it non-uniformly
-      // (squish/stretch). Counter-scaling the inner image by the exact
-      // inverse of the outer's *current* scale, every frame, cancels it
-      // completely. This has to be a rAF loop reading the outer animation's
-      // own eased progress each tick, not a second independent .animate()
-      // call on the inner element — two separately-eased WAAPI animations
-      // don't multiply out to 1 except at the very start/end, and for a
-      // large sx/sy mismatch like this app's the mid-flight residual
-      // distortion from that approach was still clearly visible.
-      const inner = clone.firstElementChild;
-      if (inner && sx !== sy) {
-        let rafId;
-        const tick = () => {
-          const timing = anim.effect.getComputedTiming();
-          const p = typeof timing.progress === "number" ? timing.progress : 1;
-          const curSx = 1 + (sx - 1) * p;
-          const curSy = 1 + (sy - 1) * p;
-          inner.style.transform = `scale(${1 / curSx}, ${1 / curSy})`;
-          if (anim.playState === "running" || anim.playState === "pending") {
-            rafId = requestAnimationFrame(tick);
-          }
-        };
-        tick();
-        anim.addEventListener("finish", () => cancelAnimationFrame(rafId), { once: true });
+      const anim = clone.animate([px(fromRect), px(toRect)], { duration, easing, fill: "forwards" });
+      layers.forEach((el) => {
+        el.animate([px(photoFrom), px(photoTo)], { duration, easing, fill: "forwards" });
+      });
+      if (tileLayer) {
+        tileLayer.style.opacity = "0";
+        tileLayer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 340, delay: 60, easing: "linear", fill: "both" });
+      }
+      if (chrome) {
+        if (mode === "close") {
+          chrome.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, delay: duration - 240, easing: "linear", fill: "both" });
+        } else {
+          chrome.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "linear", fill: "forwards" });
+        }
       }
 
       anim.onfinish = () => {
@@ -483,7 +517,7 @@
       if (tileEl && !prefersReducedMotion()) {
         const fromRect = tileEl.getBoundingClientRect();
         const toRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-        flipFly(fromRect, toRect, photoSrc, area.theme, reveal);
+        flipFly(fromRect, toRect, photoSrc, area.theme, reveal, { tileEl, mode: "open" });
       } else {
         reveal();
       }
@@ -513,7 +547,12 @@
         setTimeout(() => {
           const fromRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
           const toRect = tileEl.getBoundingClientRect();
-          flipFly(fromRect, toRect, photoSrc, area.theme, () => {});
+          const tilePhoto = tileEl.querySelector(".tile-photo");
+          flipFly(fromRect, toRect, photoSrc, area.theme, () => {}, {
+            tileEl,
+            mode: "close",
+            tilePhotoSrc: tilePhoto ? tilePhoto.src : null,
+          });
           previewEl.classList.remove("active");
         }, 150);
       } else {
@@ -551,18 +590,52 @@
         .join("");
     }
 
-    // studioFrame is centered in the view via flex + max-width/height:100%.
-    // Giving it the photo's own aspect-ratio makes it size itself exactly
-    // like object-fit:contain (letterboxed, never cropped) while staying a
-    // real box hotspots can be positioned against with plain left/top
-    // percentages — object-fit:cover alone can't do that since the visible
-    // crop shifts with viewport size.
-    function layoutStudioFrame() {
-      if (studioPhoto.naturalWidth && studioPhoto.naturalHeight) {
-        studioFrame.style.aspectRatio = `${studioPhoto.naturalWidth} / ${studioPhoto.naturalHeight}`;
-      }
+    // studio-media is full-bleed (object-fit:cover, same as every other
+    // tile's preview photo) — it crops rather than letterboxes, so a
+    // hotspot's raw x/y% from content.json (a position on the *original*
+    // photo) has to be re-mapped through the same scale-and-align math the
+    // browser applies for object-fit:cover + object-position to land on the
+    // right pixel of the *cropped, on-screen* photo. Recomputed on load and
+    // on resize. When the crop hides part of the photo (a portrait display,
+    // say — a landscape photo cover-fit into a tall box shows only its
+    // middle third), the visitor can drag to pan; studioPan is the
+    // object-position fraction (0..1) per axis, starting centered so it
+    // matches the pop-out clone's crop exactly at hand-off.
+    const studioPan = { x: 0.5, y: 0.5 };
+
+    function studioCoverMetrics() {
+      const natW = studioPhoto.naturalWidth;
+      const natH = studioPhoto.naturalHeight;
+      const box = studioMedia.getBoundingClientRect();
+      if (!natW || !natH || !box.width || !box.height) return null;
+      const scale = Math.max(box.width / natW, box.height / natH);
+      const renderedW = natW * scale;
+      const renderedH = natH * scale;
+      return { box, renderedW, renderedH, overX: Math.max(0, renderedW - box.width), overY: Math.max(0, renderedH - box.height) };
     }
-    window.addEventListener("resize", layoutStudioFrame);
+
+    const STUDIO_HINT = "Tap the glowing markers to explore the studio's gear";
+    const STUDIO_HINT_PAN = "Swipe to look around, and tap the glowing markers to explore the gear";
+
+    function positionHotspots() {
+      const m = studioCoverMetrics();
+      if (!m) return;
+      const { box, renderedW, renderedH } = m;
+      const offsetX = (box.width - renderedW) * studioPan.x;
+      const offsetY = (box.height - renderedH) * studioPan.y;
+      studioPhoto.style.objectPosition = `${studioPan.x * 100}% ${studioPan.y * 100}%`;
+      studioTagline.textContent = m.overX > box.width * 0.12 ? STUDIO_HINT_PAN : STUDIO_HINT;
+      hotspotLayer.querySelectorAll(".hotspot").forEach((el) => {
+        const x = parseFloat(el.dataset.x);
+        const y = parseFloat(el.dataset.y);
+        const xPct = ((offsetX + (x / 100) * renderedW) / box.width) * 100;
+        const yPct = ((offsetY + (y / 100) * renderedH) / box.height) * 100;
+        el.style.left = `${xPct}%`;
+        el.style.top = `${yPct}%`;
+        el.classList.toggle("flip", xPct > 62);
+      });
+    }
+    window.addEventListener("resize", positionHotspots);
 
     function closeAllHotspots() {
       hotspotLayer.querySelectorAll(".hotspot.open").forEach((h) => {
@@ -573,10 +646,9 @@
 
     function renderHotspots(studio) {
       hotspotLayer.innerHTML = (studio.hotspots || [])
-        .map((h, i) => {
-          const flip = h.x > 62 ? " flip" : "";
-          return `
-        <div class="hotspot${flip}" style="left:${h.x}%;top:${h.y}%;--hc:${h.color || "#0b2341"}" data-index="${i}">
+        .map(
+          (h, i) => `
+        <div class="hotspot" data-x="${h.x}" data-y="${h.y}" style="--hc:${h.color || "#0b2341"};--i:${i}" data-index="${i}">
           <button class="hotspot-trigger" aria-label="${h.title} — tap for details" aria-expanded="false">
             <span class="hotspot-ring"></span>
             <span class="hotspot-dot"></span>
@@ -588,8 +660,8 @@
               <div class="callout-body">${renderRichText(h.body)}</div>
             </div>
           </div>
-        </div>`;
-        })
+        </div>`
+        )
         .join("");
 
       hotspotLayer.querySelectorAll(".hotspot-trigger").forEach((trigger) => {
@@ -604,6 +676,8 @@
           }
         });
       });
+
+      positionHotspots();
     }
 
     function openStudio() {
@@ -612,9 +686,17 @@
       const photoImg = tileEl && tileEl.querySelector(".tile-photo");
       const photoSrc = photoImg ? photoImg.src : null;
 
+      studioViewEl.style.setProperty("--theme", luckyManStudio.theme || "#0b2341");
       studioEyebrow.textContent = department.name;
       studioName.textContent = luckyManStudio.name;
-      studioTagline.textContent = "Tap the markers to explore";
+      // Deliberately not luckyManStudio.tagline (that's for the hub tile) —
+      // once you're already in the full-screen view, an actionable nudge
+      // toward the hotspots is more useful than the tile's own description.
+      studioTagline.textContent = STUDIO_HINT;
+      studioApply.href = cta.url;
+      studioApply.textContent = cta.label;
+      studioPan.x = 0.5;
+      studioPan.y = 0.5;
       closeAllHotspots();
 
       // Paint the real photo + hotspots into the still-hidden overlay before
@@ -622,20 +704,22 @@
       // photo is the same file, already cached, so by the time the clone
       // lands this is ready and the hand-off is seamless.
       studioPhoto.src = luckyManStudio.image || "";
-      if (studioPhoto.complete) layoutStudioFrame();
       renderHotspots(luckyManStudio);
+      studioViewEl.classList.remove("info-visible");
 
       const reveal = () => {
         studioViewEl.style.transition = "none";
         studioViewEl.classList.add("active");
         void studioViewEl.offsetWidth;
         studioViewEl.style.transition = "";
+        requestAnimationFrame(() => studioViewEl.classList.add("info-visible"));
+        positionHotspots();
       };
 
       if (tileEl && !prefersReducedMotion()) {
         const fromRect = tileEl.getBoundingClientRect();
         const toRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-        flipFly(fromRect, toRect, photoSrc, luckyManStudio.theme, reveal);
+        flipFly(fromRect, toRect, photoSrc, luckyManStudio.theme, reveal, { tileEl, mode: "open" });
       } else {
         reveal();
       }
@@ -646,12 +730,18 @@
       closeAllHotspots();
       const tileEl = document.getElementById("studio-tile");
       const photoSrc = studioPhoto.getAttribute("src");
+      studioViewEl.classList.remove("info-visible");
 
       if (tileEl && !prefersReducedMotion()) {
         setTimeout(() => {
           const fromRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
           const toRect = tileEl.getBoundingClientRect();
-          flipFly(fromRect, toRect, photoSrc, luckyManStudio && luckyManStudio.theme, () => {});
+          const tilePhoto = tileEl.querySelector(".tile-photo");
+          flipFly(fromRect, toRect, photoSrc, luckyManStudio && luckyManStudio.theme, () => {}, {
+            tileEl,
+            mode: "close",
+            tilePhotoSrc: tilePhoto ? tilePhoto.src : null,
+          });
           studioViewEl.classList.remove("active");
         }, 150);
       } else {
@@ -659,9 +749,37 @@
       }
     }
 
-    studioPhoto.addEventListener("load", layoutStudioFrame);
+    studioPhoto.addEventListener("load", positionHotspots);
+    // Drag to pan when the cover crop hides part of the photo. A drag also
+    // ends in a click on the media, which must not count as "tapped the
+    // photo" (that closes the open hotspot), hence studioDragged.
+    let studioDrag = null;
+    let studioDragged = false;
+    studioMedia.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".hotspot")) return;
+      studioDrag = { x: e.clientX, y: e.clientY, panX: studioPan.x, panY: studioPan.y };
+      studioDragged = false;
+      studioMedia.setPointerCapture(e.pointerId);
+    });
+    studioMedia.addEventListener("pointermove", (e) => {
+      if (!studioDrag) return;
+      const dx = e.clientX - studioDrag.x;
+      const dy = e.clientY - studioDrag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 6) studioDragged = true;
+      const m = studioCoverMetrics();
+      if (!m || !studioDragged) return;
+      if (m.overX > 1) studioPan.x = Math.min(1, Math.max(0, studioDrag.panX - dx / m.overX));
+      if (m.overY > 1) studioPan.y = Math.min(1, Math.max(0, studioDrag.panY - dy / m.overY));
+      positionHotspots();
+    });
+    const endStudioDrag = () => { studioDrag = null; };
+    studioMedia.addEventListener("pointerup", endStudioDrag);
+    studioMedia.addEventListener("pointercancel", endStudioDrag);
     // Tapping the photo itself (not a marker) closes whatever hotspot is open.
-    studioFrame.addEventListener("click", closeAllHotspots);
+    studioMedia.addEventListener("click", () => {
+      if (studioDragged) return;
+      closeAllHotspots();
+    });
     document.getElementById("studio-close").addEventListener("click", closeStudio);
 
     // -------------------------------------------------------------- render area (media-led)

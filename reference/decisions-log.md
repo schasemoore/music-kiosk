@@ -398,7 +398,21 @@ existed" pattern as the `netlify.toml` caching entry above — worth checking
 this project "looks hardcoded from day one," since both had exactly that
 problem at once.
 
-## FLIP pop-out photo distortion — inner image needs a per-frame counter-scale, not a second `.animate()` call
+**Addendum:** `assets/uploads/` is no longer empty — the logo swap the user
+made through the live CMS (`/assets/uploads/au_logo_fullcolor_blue.png`, saved
+under the *old* `media_folder`) landed there. That reference is an absolute
+path already saved in `content.json`, so it keeps resolving after this fix;
+`media_folder` only governs what the picker browses and where *new* uploads go.
+So `assets/uploads/` holds that one logo now, while every other asset still
+lives under `assets/images/`, `assets/video/`, and `assets/brand/`.
+
+## FLIP pop-out photo distortion — inner image needs a per-frame counter-scale, not a second `.animate()` call (SUPERSEDED)
+
+**Superseded** by "Pop-out animation, third pass" below — the rAF counter-scale
+worked exactly as described here but the result still looked wrong to the user,
+so the whole transform-based approach was dropped for real width/height
+animation. Kept because the reciprocal-of-lerp math it documents is a real
+trap if anyone tries a transform-based FLIP again.
 
 User: "I hate how the picture distorts when the tile opens. can it scale
 cleaner?" Real bug, not a nitpick: `flipFly`'s clone box scales from the
@@ -447,6 +461,98 @@ check whether it went back to a plain `.animate()`-based counter-scale
 instead of this per-frame rAF approach — it looks correct for small,
 same-order-of-magnitude sx/sy but silently reintroduces this exact bug for
 the large aspect-ratio swings this kiosk's tiles actually produce.
+
+## Pop-out animation, third pass: real layout animation, exact tile hand-off, smoother easing
+
+User, after the counter-scale fix above shipped: "the animations are still
+weird when opening the tiles." The counter-scale version was mathematically
+exact (net scale measured at 1.0 mid-flight) and still wrong-looking, which
+meant the problem wasn't only distortion. Diagnosing by sampling the clone's
+real geometry at timed instants found three separate causes, fixed together:
+
+1. **`transform: scale` on a shape-changing box is the wrong tool at all.**
+   Even with the image kept undistorted, the crop window it's forced to show
+   drifts unnaturally as a non-uniformly-scaled box changes shape. Real
+   `left/top/width/height` animation (WAAPI, one `position: fixed` element)
+   lets `object-fit: cover` recompute natively each frame — zero custom math,
+   nothing to get subtly wrong. The old code comment said "never width/height
+   so it stays off the layout thread"; that trade was backwards here.
+2. **The clone didn't start or end looking like the tile.** The hub tile's
+   photo is not a plain cover crop: `.tile-photo` is a 110%-sized Ken Burns
+   layer that's continuously drifting/zooming, with a scrim, name, tagline,
+   and arrow on top. A clone that began as a bare, un-zoomed cover crop
+   visibly jumped on frame 1 (different zoom) and the tile's text vanished
+   instantly; closing did the mirror-image jump when the clone was removed
+   and the real tile reappeared. Fix: with a `tileEl`, the photo layer is
+   placed at the tile photo's *actual current* `getBoundingClientRect()` (it
+   includes the drift transform) and animated to/from the full-frame fit, a
+   copy of `.tile-scrim`/`.tile-arrow`/`.tile-text` fades out on open and back
+   in on close, and on close the tile's own photo crossfades in if the visitor
+   had swiped to a different carousel slide.
+3. **The easing lurched.** `cubic-bezier(.2,.8,.2,1)` put ~78% of a
+   tile-to-fullscreen growth in the first 120ms and crawled through the rest
+   (measured). Now Material's `cubic-bezier(.4,0,.2,1)` at 520ms — slow start,
+   fast middle, soft landing — sampled at 401→616→1300→1552→1600px wide over
+   the flight.
+
+Also fixed while here: `.preview-info`'s bottom scrim was capped at 880px wide,
+so on any wider viewport it ended in a hard vertical seam that popped in with
+the info panel right after landing. The gradient now lives on a full-width
+`::before` behind the width-capped content.
+
+I can't *watch* motion in this tooling — only sample geometry and take stills —
+so "verified" here means the sampled numbers match the intended curves and
+hand-off states, not that I judged the feel by eye. If it still reads as off,
+the next things to check are the 520ms duration and whether the tile's chrome
+fade timings (200ms out / 240ms in) want tuning.
+
+## The studio pop-out now looks and behaves like every other tile's
+
+User: the studio picture "does not open full screen like the others, and it
+still needs the same buttons/structure as the other tiles in addition to the
+hotspot." This reverses two of my own earlier calls:
+
+- **Letterboxed `contain`-style frame → full-bleed `cover`.** I'd built it
+  letterboxed on purpose so hotspot percentages could never drift off the gear
+  (with `cover` the crop shifts with viewport shape). The user's priority was
+  clearly consistency with the other tiles, so it's `cover` now and hotspots
+  are *re-mapped* through the cover-fit math (`positionHotspots`) instead of
+  avoiding the crop. The cost: on a narrow/portrait display a landscape photo
+  shows only its middle third and would strand hotspots off-screen, so the
+  photo is drag-to-pan (`studioPan` → `object-position`), with the intro line
+  swapping to "Swipe to look around…" when the crop is significant. It resets to
+  centered on every open so the overlay's crop matches the pop-out clone's
+  exactly at hand-off.
+- **Bespoke overlay → the shared one.** `#studio-view` is now a `.preview-modal`
+  using `.preview-close`/`.preview-media`/`.preview-info`/`.btn` directly (the
+  old `.studio-view`/`.studio-label`/`.studio-frame` rules are deleted). Same
+  structure by construction, not by hand-matching. It gets an Apply button from
+  the site-wide `cta` (no per-studio override field), and deliberately *no*
+  "More about this program" — there's no separate studio page and building one
+  wasn't asked for.
+
+**Making hotspots obvious** (user: "bigger hotspots and better intro text"):
+26px dot / 3px white ring / 52px pulse ring / 64px tap target with a soft white
+glow so navy reads on dark equipment; markers pop in one after another just
+after the photo lands; the intro line is larger/bolder and led by a mini marker
+that pulses like the real ones so the text visibly maps to the dots. That line
+is fixed JS text ("Tap the glowing markers to explore the studio's gear"), not
+`luckyManStudio.tagline` (the hub tile's description) — once you're already
+inside, an actionable nudge beats a description. The intro copy is my
+interpretation of "better intro text"; easy to reword.
+
+## Local dev server can white-screen the app when `index.html` goes stale
+
+Not an app bug, but it cost a debugging detour and may relate to the user's
+"regular browser vs private window" symptom: `python3 -m http.server` sends no
+`Cache-Control`, so a browser can keep a stale `index.html` after an edit while
+fetching a fresh `js/app.js`. When they disagree (a new element id in JS that
+the cached HTML lacks), `initApp` throws on a null `addEventListener`, the
+`.catch` in the boot code replaces `document.body` with the "Couldn't load
+kiosk content" message, and everything is gone — misleadingly worded, since
+`content.json` was fine. See `reference/deployment.md`'s "Local dev server" for
+the workaround. Netlify's default always-revalidate headers avoid this in
+production.
 
 ## Second archive pass — every area now has a full 3-photo set, all from Box
 

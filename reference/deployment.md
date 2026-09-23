@@ -1,6 +1,6 @@
 # Deployment & accounts
 
-**This file describes state as of 2026-09-22 — verify before trusting
+**This file describes state as of 2026-09-23 — verify before trusting
 anything time-sensitive (Netlify status, invite links, etc.). Update this
 file whenever deployment state actually changes.**
 
@@ -40,9 +40,23 @@ file whenever deployment state actually changes.**
 
 ## Netlify
 
-Not yet confirmed connected as of the last check-in. To connect:
-**Add new site → Import an existing project → GitHub → `music-kiosk`**.
-Build command blank, publish directory `.` (set in `netlify.toml`).
+**Live as of 2026-09-23** — content edits made through `/admin` are landing on
+`origin/main` as auto-generated commits (`Update Kiosk Content "content"`,
+authored by the staff member's account, not a local identity), which only
+happens when Netlify Identity + Git Gateway are working. (Earlier versions of
+this file said Netlify wasn't confirmed connected; that's no longer true.)
+Setup for reference: **Add new site → Import an existing project → GitHub →
+`music-kiosk`**, build command blank, publish directory `.` (set in
+`netlify.toml`).
+
+**Gotcha — CMS commits diverge your local branch.** Because `/admin` commits
+straight to `main`, a local branch can be behind `origin/main` without you
+having pulled anything. Always `git fetch` and check `git status` before
+pushing; if it says "diverged", merge `origin/main` (never force-push — that
+would wipe out live CMS edits). The CMS rewrites `data/content.json` in its
+own field order and pretty-printing, so a merge touching that file can look
+scarier than it is; a purely additive local change (like adding
+`luckyManStudio`) merges cleanly.
 
 ## Decap CMS (`/admin`) activation checklist
 
@@ -83,6 +97,19 @@ python3 -m http.server 5173
 from the project root. **Don't suggest `npx serve`** — this machine's npm
 cache is owned by root (`EACCES` on `~/.npm/_cacache`) and fails; not worth
 re-diagnosing, just use Python's server.
+
+**Caching hazard on this server (not on Netlify):** `python3 -m http.server`
+sends `Last-Modified` but no `Cache-Control`, so browsers apply heuristic
+caching and can keep serving a stale `index.html` after you edit it. That is
+worse than a stale look — if `index.html` (e.g. new element ids) goes out of
+sync with a freshly-fetched `js/app.js`, `initApp` throws on a null element
+and the boot error fallback wipes the whole page to a blank screen with only
+"Couldn't load kiosk content". Hit this while testing the studio overlay
+rework. Fix: hard-refresh (Cmd+Shift+R), load a cache-busting URL
+(`/?v=2`), or test in a private window. `netlify.toml`'s headers don't apply
+to this server at all. If this ever costs real time again, swap in a tiny
+Python server that adds `Cache-Control: no-store` instead of using
+`http.server` directly.
 
 ## Font licensing — don't re-introduce this problem
 
