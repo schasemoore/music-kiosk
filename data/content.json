@@ -1,48 +1,4 @@
 {
-  "logo": "/assets/uploads/au_logo_fullcolor_blue.png",
-  "department": {
-    "name": "Department of Music",
-    "heroTitle": "Be a Part of the Music.",
-    "heroSub": "Eight programs, one Auburn stage. Tap one to step in."
-  },
-  "cta": {
-    "url": "https://cla.auburn.edu/music/future-students/apply-and-audition/",
-    "label": "Learn How to Apply"
-  },
-  "idleTimeoutMs": 90000,
-  "splashIntervalMs": 7000,
-  "galleryCaptions": [
-    "In rehearsal",
-    "On stage",
-    "In the studio"
-  ],
-  "splash": [
-    {
-      "media": "assets/images/splash/1.jpg",
-      "theme": "#e86100",
-      "caption": "Auburn University Department of Music"
-    },
-    {
-      "media": "assets/images/splash/2.jpg",
-      "theme": "#0093d2",
-      "caption": "Bands, choirs, orchestra & more"
-    },
-    {
-      "media": "assets/images/splash/3.jpg",
-      "theme": "#00a597",
-      "caption": "Eight programs, one stage"
-    },
-    {
-      "media": "assets/images/splash/4.jpg",
-      "theme": "#cc4e0b",
-      "caption": "Study with Auburn's faculty artists"
-    },
-    {
-      "media": "assets/images/splash/5.jpg",
-      "theme": "#0b2341",
-      "caption": "Find your sound at Auburn"
-    }
-  ],
   "areas": [
     {
       "size": "large",
@@ -221,6 +177,33 @@
       "description": "Offered with Auburn's College of Education, the Bachelor of Music Education prepares instrumental, vocal, or combined-track teachers and is approved by the Alabama State Board of Education and CAEP."
     }
   ],
+  "splash": [
+    {
+      "media": "assets/images/splash/1.jpg",
+      "theme": "#e86100",
+      "caption": "Auburn University Department of Music"
+    },
+    {
+      "media": "assets/images/splash/2.jpg",
+      "theme": "#0093d2",
+      "caption": "Bands, choirs, orchestra & more"
+    },
+    {
+      "media": "assets/images/splash/3.jpg",
+      "theme": "#00a597",
+      "caption": "Eight programs, one stage"
+    },
+    {
+      "media": "assets/images/splash/4.jpg",
+      "theme": "#cc4e0b",
+      "caption": "Study with Auburn's faculty artists"
+    },
+    {
+      "media": "assets/images/splash/5.jpg",
+      "theme": "#0b2341",
+      "caption": "Find your sound at Auburn"
+    }
+  ],
   "luckyManStudio": {
     "name": "Lucky Man Studio",
     "tagline": "Auburn's professional recording & production space",
@@ -251,11 +234,28 @@
       },
       {
         "x": 7,
-        "y": 46,
+        "y": 67,
         "color": "#0b2341",
         "title": "Outboard Gear",
         "body": "A rack of outboard processors, including vintage-style tube compressors modeled on the legendary Fairchild 670 — patched in for tracking and mixing sessions."
       }
     ]
-  }
+  },
+  "logo": "/assets/uploads/au_logo_fullcolor_blue.png",
+  "cta": {
+    "url": "https://cla.auburn.edu/music/future-students/apply-and-audition/",
+    "label": "Learn How to Apply"
+  },
+  "splashIntervalMs": 7000,
+  "department": {
+    "name": "Department of Music",
+    "heroTitle": "Be a Part of the Music.",
+    "heroSub": "Eight programs, one Auburn stage. Tap one to step in."
+  },
+  "idleTimeoutMs": 90000,
+  "galleryCaptions": [
+    "In rehearsal",
+    "On stage",
+    "In the studio"
+  ]
 }
