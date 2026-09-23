@@ -1,5 +1,5 @@
 {
-  "logo": "assets/brand/auburn-logo.svg",
+  "logo": "/assets/uploads/au_logo_fullcolor_blue.png",
   "department": {
     "name": "Department of Music",
     "heroTitle": "Find your sound.",
@@ -11,134 +11,214 @@
   },
   "idleTimeoutMs": 90000,
   "splashIntervalMs": 7000,
-  "galleryCaptions": ["In rehearsal", "On stage", "In the studio"],
+  "galleryCaptions": [
+    "In rehearsal",
+    "On stage",
+    "In the studio"
+  ],
   "splash": [
-    { "media": "assets/images/splash/1.jpg", "theme": "#e86100", "caption": "Auburn University Department of Music" },
-    { "media": "assets/images/splash/2.jpg", "theme": "#0093d2", "caption": "Bands, choirs, orchestra & more" },
-    { "media": "assets/images/splash/3.jpg", "theme": "#00a597", "caption": "Eight programs, one stage" },
-    { "media": "assets/images/splash/4.jpg", "theme": "#cc4e0b", "caption": "Study with Auburn's faculty artists" },
-    { "media": "assets/images/splash/5.jpg", "theme": "#0b2341", "caption": "Find your sound at Auburn" }
+    {
+      "media": "assets/images/splash/1.jpg",
+      "theme": "#e86100",
+      "caption": "Auburn University Department of Music"
+    },
+    {
+      "media": "assets/images/splash/2.jpg",
+      "theme": "#0093d2",
+      "caption": "Bands, choirs, orchestra & more"
+    },
+    {
+      "media": "assets/images/splash/3.jpg",
+      "theme": "#00a597",
+      "caption": "Eight programs, one stage"
+    },
+    {
+      "media": "assets/images/splash/4.jpg",
+      "theme": "#cc4e0b",
+      "caption": "Study with Auburn's faculty artists"
+    },
+    {
+      "media": "assets/images/splash/5.jpg",
+      "theme": "#0b2341",
+      "caption": "Find your sound at Auburn"
+    }
   ],
   "areas": [
     {
-      "id": "bands-ensembles",
+      "size": "large",
+      "photos": [
+        "assets/images/areas/bands-ensembles/1.jpg",
+        "assets/images/areas/bands-ensembles/2.jpg"
+      ],
+      "previewPlayback": "photo",
+      "facts": [
+        "Open to all Auburn students",
+        "Bands, Choirs, Orchestra",
+        "Jazz & Chamber Ensembles"
+      ],
+      "theme": "#e86100",
       "name": "Bands & Ensembles",
+      "poster": "assets/images/areas/bands-ensembles/poster.jpg",
       "tagline": "Marching, concert, jazz, choral & chamber groups",
       "icon": "ensemble",
-      "theme": "#e86100",
-      "size": "large",
-      "description": "From the Auburn University Marching Band to jazz combos, chamber groups, choirs, and orchestra, Auburn's ensembles are open to music majors and non-majors alike — find your group and get playing.",
-      "facts": ["Open to all Auburn students", "Bands, Choirs, Orchestra", "Jazz & Chamber Ensembles"],
       "hero": "assets/images/areas/bands-ensembles/hero.jpg",
-      "photos": ["assets/images/areas/bands-ensembles/1.jpg", "assets/images/areas/bands-ensembles/2.jpg"],
       "video": "assets/video/areas/bands-ensembles/reel.mp4",
-      "poster": "assets/images/areas/bands-ensembles/poster.jpg",
-      "previewPlayback": "photo"
+      "id": "bands-ensembles",
+      "description": "From the Auburn University Marching Band to jazz combos, chamber groups, choirs, and orchestra, Auburn's ensembles are open to music majors and non-majors alike — find your group and get playing."
     },
     {
-      "id": "brass",
+      "size": "normal",
+      "photos": [
+        "assets/images/areas/brass/1.jpg",
+        "assets/images/areas/brass/2.jpg"
+      ],
+      "previewPlayback": "photo",
+      "facts": [
+        "Bachelor of Music (Instrumental)",
+        "Private weekly lessons",
+        "Bands, Orchestra & Jazz Ensembles"
+      ],
+      "theme": "#ffc044",
       "name": "Brass",
+      "poster": "assets/images/areas/brass/poster.jpg",
       "tagline": "Trumpet, horn, trombone, euphonium & tuba",
       "icon": "brass",
-      "theme": "#ffc044",
-      "size": "normal",
-      "description": "Brass students study applied performance within Auburn's Bachelor of Music instrumental track, with private lessons, studio classes, and placement in Auburn's bands, orchestra, and jazz ensembles.",
-      "facts": ["Bachelor of Music (Instrumental)", "Private weekly lessons", "Bands, Orchestra & Jazz Ensembles"],
       "hero": "assets/images/areas/brass/hero.jpg",
-      "photos": ["assets/images/areas/brass/1.jpg", "assets/images/areas/brass/2.jpg"],
       "video": "assets/video/areas/brass/reel.mp4",
-      "poster": "assets/images/areas/brass/poster.jpg",
-      "previewPlayback": "photo"
+      "id": "brass",
+      "description": "Brass students study applied performance within Auburn's Bachelor of Music instrumental track, with private lessons, studio classes, and placement in Auburn's bands, orchestra, and jazz ensembles."
     },
     {
-      "id": "woodwind-percussion",
+      "size": "normal",
+      "photos": [
+        "assets/images/areas/woodwind-percussion/1.jpg",
+        "assets/images/areas/woodwind-percussion/2.jpg"
+      ],
+      "previewPlayback": "photo",
+      "facts": [
+        "Bachelor of Music (Instrumental)",
+        "Private weekly lessons",
+        "Marching, Concert & Jazz Bands"
+      ],
+      "theme": "#0093d2",
       "name": "Woodwind & Percussion",
+      "poster": "assets/images/areas/woodwind-percussion/poster.jpg",
       "tagline": "Flute, clarinet, saxophone, oboe, bassoon & percussion",
       "icon": "woodwind",
-      "theme": "#0093d2",
-      "size": "normal",
-      "description": "Woodwind and percussion majors pursue a Bachelor of Music in Instrumental Performance, combining private study with ensemble placement across Auburn's concert bands, orchestra, and jazz program.",
-      "facts": ["Bachelor of Music (Instrumental)", "Private weekly lessons", "Marching, Concert & Jazz Bands"],
       "hero": "assets/images/areas/woodwind-percussion/hero.jpg",
-      "photos": ["assets/images/areas/woodwind-percussion/1.jpg", "assets/images/areas/woodwind-percussion/2.jpg"],
       "video": "assets/video/areas/woodwind-percussion/reel.mp4",
-      "poster": "assets/images/areas/woodwind-percussion/poster.jpg",
-      "previewPlayback": "photo"
+      "id": "woodwind-percussion",
+      "description": "Woodwind and percussion majors pursue a Bachelor of Music in Instrumental Performance, combining private study with ensemble placement across Auburn's concert bands, orchestra, and jazz program."
     },
     {
-      "id": "voice",
+      "size": "normal",
+      "photos": [
+        "assets/images/areas/voice/1.jpg",
+        "assets/images/areas/voice/2.jpg"
+      ],
+      "previewPlayback": "photo",
+      "facts": [
+        "Bachelor of Music (Vocal Performance)",
+        "Private weekly lessons",
+        "Choirs & Opera Workshop"
+      ],
+      "theme": "#cc4e0b",
       "name": "Voice",
+      "poster": "assets/images/areas/voice/poster.jpg",
       "tagline": "Classical & musical theatre vocal performance",
       "icon": "voice",
-      "theme": "#cc4e0b",
-      "size": "normal",
-      "description": "Vocal Performance students earn a Bachelor of Music built around private voice lessons, diction and vocal pedagogy coursework, and performance opportunities with Auburn's choirs and opera workshop.",
-      "facts": ["Bachelor of Music (Vocal Performance)", "Private weekly lessons", "Choirs & Opera Workshop"],
       "hero": "assets/images/areas/voice/hero.jpg",
-      "photos": ["assets/images/areas/voice/1.jpg", "assets/images/areas/voice/2.jpg"],
       "video": "assets/video/areas/voice/reel.mp4",
-      "poster": "assets/images/areas/voice/poster.jpg",
-      "previewPlayback": "photo"
+      "id": "voice",
+      "description": "Vocal Performance students earn a Bachelor of Music built around private voice lessons, diction and vocal pedagogy coursework, and performance opportunities with Auburn's choirs and opera workshop."
     },
     {
-      "id": "piano",
+      "size": "normal",
+      "photos": [
+        "assets/images/areas/piano/1.jpg",
+        "assets/images/areas/piano/2.jpg"
+      ],
+      "previewPlayback": "photo",
+      "facts": [
+        "Bachelor of Music (Piano)",
+        "Private weekly lessons",
+        "Studio recitals & Concerto Competition"
+      ],
+      "theme": "#7a685b",
       "name": "Piano",
+      "poster": "assets/images/areas/piano/poster.jpg",
       "tagline": "Classical performance & collaborative keyboard",
       "icon": "piano",
-      "theme": "#7a685b",
-      "size": "normal",
-      "description": "Piano majors complete a Bachelor of Music focused on solo performance, collaborative piano, and pedagogy, with regular studio recitals and the annual Concerto Competition.",
-      "facts": ["Bachelor of Music (Piano)", "Private weekly lessons", "Studio recitals & Concerto Competition"],
       "hero": "assets/images/areas/piano/hero.jpg",
-      "photos": ["assets/images/areas/piano/1.jpg", "assets/images/areas/piano/2.jpg"],
       "video": "assets/video/areas/piano/reel.mp4",
-      "poster": "assets/images/areas/piano/poster.jpg",
-      "previewPlayback": "photo"
+      "id": "piano",
+      "description": "Piano majors complete a Bachelor of Music focused on solo performance, collaborative piano, and pedagogy, with regular studio recitals and the annual Concerto Competition."
     },
     {
-      "id": "commercial-music",
+      "size": "normal",
+      "photos": [
+        "assets/images/areas/commercial-music/1.jpg",
+        "assets/images/areas/commercial-music/2.jpg"
+      ],
+      "previewPlayback": "photo",
+      "facts": [
+        "Bachelor of Music (Commercial Music)",
+        "Lucky Man Studio",
+        "Commercial Ensembles"
+      ],
+      "theme": "#00a597",
       "name": "Commercial Music",
+      "poster": "assets/images/areas/commercial-music/poster.jpg",
       "tagline": "Modern performance, production & the music business",
       "icon": "commercial",
-      "theme": "#00a597",
-      "size": "normal",
-      "description": "The Commercial Music degree blends contemporary performance with recording, production, and the business side of the music industry — including access to Auburn's Lucky Man Studio and Commercial Ensembles.",
-      "facts": ["Bachelor of Music (Commercial Music)", "Lucky Man Studio", "Commercial Ensembles"],
       "hero": "assets/images/areas/commercial-music/hero.jpg",
-      "photos": ["assets/images/areas/commercial-music/1.jpg", "assets/images/areas/commercial-music/2.jpg"],
       "video": "assets/video/areas/commercial-music/reel.mp4",
-      "poster": "assets/images/areas/commercial-music/poster.jpg",
-      "previewPlayback": "photo"
+      "id": "commercial-music",
+      "description": "The Commercial Music degree blends contemporary performance with recording, production, and the business side of the music industry — including access to Auburn's Lucky Man Studio and Commercial Ensembles."
     },
     {
-      "id": "composition-technology",
+      "size": "normal",
+      "photos": [
+        "assets/images/areas/composition-technology/1.jpg",
+        "assets/images/areas/composition-technology/2.jpg"
+      ],
+      "previewPlayback": "photo",
+      "facts": [
+        "Bachelor of Music (Composition, Technology)",
+        "DAW & production coursework",
+        "New-music & premiere performances"
+      ],
+      "theme": "#4e8020",
       "name": "Composition & Technology",
+      "poster": "assets/images/areas/composition-technology/poster.jpg",
       "tagline": "Original composition & music technology",
       "icon": "composition",
-      "theme": "#4e8020",
-      "size": "normal",
-      "description": "Composition (Technology) students write original concert, media, and electronic music while building skills in notation software, digital audio workstations, and recording technology.",
-      "facts": ["Bachelor of Music (Composition, Technology)", "DAW & production coursework", "New-music & premiere performances"],
       "hero": "assets/images/areas/composition-technology/hero.jpg",
-      "photos": ["assets/images/areas/composition-technology/1.jpg", "assets/images/areas/composition-technology/2.jpg"],
       "video": "assets/video/areas/composition-technology/reel.mp4",
-      "poster": "assets/images/areas/composition-technology/poster.jpg",
-      "previewPlayback": "photo"
+      "id": "composition-technology",
+      "description": "Composition (Technology) students write original concert, media, and electronic music while building skills in notation software, digital audio workstations, and recording technology."
     },
     {
-      "id": "music-education",
+      "size": "normal",
+      "photos": [
+        "assets/images/areas/music-education/1.jpg",
+        "assets/images/areas/music-education/2.jpg"
+      ],
+      "previewPlayback": "photo",
+      "facts": [
+        "Bachelor of Music Education",
+        "Instrumental, Vocal & Combined tracks",
+        "State- & CAEP-approved"
+      ],
+      "theme": "#0b2341",
       "name": "Music Education",
+      "poster": "assets/images/areas/music-education/poster.jpg",
       "tagline": "Become a K-12 instrumental or vocal music teacher",
       "icon": "education",
-      "theme": "#0b2341",
-      "size": "normal",
-      "description": "Offered with Auburn's College of Education, the Bachelor of Music Education prepares instrumental, vocal, or combined-track teachers and is approved by the Alabama State Board of Education and CAEP.",
-      "facts": ["Bachelor of Music Education", "Instrumental, Vocal & Combined tracks", "State- & CAEP-approved"],
       "hero": "assets/images/areas/music-education/hero.jpg",
-      "photos": ["assets/images/areas/music-education/1.jpg", "assets/images/areas/music-education/2.jpg"],
       "video": "assets/video/areas/music-education/reel.mp4",
-      "poster": "assets/images/areas/music-education/poster.jpg",
-      "previewPlayback": "photo"
+      "id": "music-education",
+      "description": "Offered with Auburn's College of Education, the Bachelor of Music Education prepares instrumental, vocal, or combined-track teachers and is approved by the Alabama State Board of Education and CAEP."
     }
   ]
 }
