@@ -10,6 +10,7 @@
     composition: '<path d="M4 18V6M4 6l16-2v14l-16 2" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="17" r="2" stroke-width="2" fill="none"/>',
     education: '<path d="M2 8l10-4 10 4-10 4-10-4Z" stroke-width="2" fill="none" stroke-linejoin="round"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5M22 8v6" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
     ensemble: '<circle cx="8" cy="8" r="3" stroke-width="2" fill="none"/><circle cx="17" cy="9" r="2.5" stroke-width="2" fill="none"/><path d="M2 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M15 19v-1a4 4 0 0 1 4-4h.5a3 3 0 0 1 2.5 4.5" stroke-width="2" fill="none" stroke-linecap="round"/>',
+    studio: '<path d="M6 3v18M12 3v18M18 3v18" stroke-width="2" stroke-linecap="round"/><circle cx="6" cy="9" r="2" stroke-width="2" fill="none"/><circle cx="12" cy="15" r="2" stroke-width="2" fill="none"/><circle cx="18" cy="7" r="2" stroke-width="2" fill="none"/>',
   };
 
   // Attract-screen panel wall — a different asymmetric split than the hub
@@ -45,6 +46,13 @@
   const previewFacts = document.getElementById("preview-facts");
   const previewLearnMore = document.getElementById("preview-learn-more");
   const previewApply = document.getElementById("preview-apply");
+  const studioViewEl = document.getElementById("studio-view");
+  const studioFrame = document.getElementById("studio-frame");
+  const studioPhoto = document.getElementById("studio-photo");
+  const hotspotLayer = document.getElementById("hotspot-layer");
+  const studioEyebrow = document.getElementById("studio-eyebrow");
+  const studioName = document.getElementById("studio-name");
+  const studioTagline = document.getElementById("studio-tagline");
 
   // ---------------------------------------------------------------- media loading helpers
   // Try an image, then a video, then fall back to a themed color card. Used
@@ -85,7 +93,7 @@
     });
 
   function initApp(content) {
-    const { department, cta, idleTimeoutMs, splashIntervalMs, galleryCaptions, splash, areas, logo } = content;
+    const { department, cta, idleTimeoutMs, splashIntervalMs, galleryCaptions, splash, areas, logo, luckyManStudio } = content;
 
     document.querySelectorAll(".brand-logo").forEach((img) => {
       if (logo) img.src = logo;
@@ -138,9 +146,33 @@
         })
         .join("");
 
-      programList.querySelectorAll(".tile-open").forEach((tile) => {
+      // Lucky Man Studio: appended after the mapped areas, not part of
+      // areas[] itself (it doesn't reorder with them, and its CMS fields are
+      // a different shape entirely — see openStudio below). Still a plain
+      // .area-tile so it packs into the same dense grid as everything else.
+      if (luckyManStudio) {
+        const sizeClass = luckyManStudio.size === "large" ? "size-large" : "size-normal";
+        programList.insertAdjacentHTML(
+          "beforeend",
+          `
+        <div class="area-tile ${sizeClass}" id="studio-tile" style="--tile-color:${luckyManStudio.theme || "#0b2341"}">
+          <button class="tile-open" id="studio-tile-open" aria-label="Open ${luckyManStudio.name}">
+            <svg class="ghost-icon" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">${ICONS.studio}</svg>
+            <span class="tile-scrim"></span>
+            <span class="tile-text">
+              <h3>${luckyManStudio.name}</h3>
+              <span class="tagline">${luckyManStudio.tagline || ""}</span>
+            </span>
+          </button>
+        </div>`
+        );
+      }
+
+      programList.querySelectorAll(".tile-open[data-area]").forEach((tile) => {
         tile.addEventListener("click", () => openPreview(tile.dataset.area));
       });
+      const studioTileOpen = document.getElementById("studio-tile-open");
+      if (studioTileOpen) studioTileOpen.addEventListener("click", openStudio);
 
       // Upgrade tiles to a real photo when one exists, without blocking the initial render.
       areas.forEach((a) => {
@@ -158,6 +190,20 @@
           if (ghost) ghost.style.display = "none";
         });
       });
+      if (luckyManStudio) {
+        probeImage(luckyManStudio.image).then((ok) => {
+          if (!ok) return;
+          const tileOpen = document.getElementById("studio-tile-open");
+          if (!tileOpen) return;
+          const img = document.createElement("img");
+          img.className = "tile-photo";
+          img.alt = luckyManStudio.name;
+          img.src = luckyManStudio.image;
+          tileOpen.parentElement.prepend(img);
+          const ghost = tileOpen.querySelector(".ghost-icon");
+          if (ghost) ghost.style.display = "none";
+        });
+      }
     }
 
     // -------------------------------------------------------------- equalizer bars (live texture)
@@ -445,6 +491,147 @@
 
     document.getElementById("preview-close").addEventListener("click", closePreview);
 
+    // -------------------------------------------------------------- Lucky Man Studio: full photo + tappable hotspots
+    // Unlike every area tile, this one doesn't open the carousel/facts/Apply
+    // preview at all — it pops (same FLIP mechanism) straight to a full
+    // picture of the studio with hotspot markers over real equipment. See
+    // reference/architecture.md and reference/design-system.md.
+
+    // Tiny, deliberately limited markdown -> HTML for hotspot body text
+    // (matches what Decap's "markdown" WYSIWYG widget stores). Escapes raw
+    // HTML first, then re-introduces only **bold**, *italic*, and
+    // [text](url) links, plus blank-line paragraphs. Not a general-purpose
+    // parser — if a body ever needs more than that, upgrade this instead of
+    // trusting raw HTML from content.json.
+    function renderRichText(md) {
+      if (!md) return "";
+      const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return md
+        .split(/\n\s*\n/)
+        .map((para) => {
+          let p = escape(para.trim());
+          p = p.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+          p = p.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+          p = p.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+          p = p.replace(/\n/g, "<br>");
+          return `<p>${p}</p>`;
+        })
+        .join("");
+    }
+
+    // studioFrame is centered in the view via flex + max-width/height:100%.
+    // Giving it the photo's own aspect-ratio makes it size itself exactly
+    // like object-fit:contain (letterboxed, never cropped) while staying a
+    // real box hotspots can be positioned against with plain left/top
+    // percentages — object-fit:cover alone can't do that since the visible
+    // crop shifts with viewport size.
+    function layoutStudioFrame() {
+      if (studioPhoto.naturalWidth && studioPhoto.naturalHeight) {
+        studioFrame.style.aspectRatio = `${studioPhoto.naturalWidth} / ${studioPhoto.naturalHeight}`;
+      }
+    }
+    window.addEventListener("resize", layoutStudioFrame);
+
+    function closeAllHotspots() {
+      hotspotLayer.querySelectorAll(".hotspot.open").forEach((h) => {
+        h.classList.remove("open");
+        h.querySelector(".hotspot-trigger").setAttribute("aria-expanded", "false");
+      });
+    }
+
+    function renderHotspots(studio) {
+      hotspotLayer.innerHTML = (studio.hotspots || [])
+        .map((h, i) => {
+          const flip = h.x > 62 ? " flip" : "";
+          return `
+        <div class="hotspot${flip}" style="left:${h.x}%;top:${h.y}%;--hc:${h.color || "#0b2341"}" data-index="${i}">
+          <button class="hotspot-trigger" aria-label="${h.title} — tap for details" aria-expanded="false">
+            <span class="hotspot-ring"></span>
+            <span class="hotspot-dot"></span>
+          </button>
+          <div class="hotspot-callout">
+            <div class="callout-card">
+              <div class="callout-title">${h.title}</div>
+              <span class="callout-line"></span>
+              <div class="callout-body">${renderRichText(h.body)}</div>
+            </div>
+          </div>
+        </div>`;
+        })
+        .join("");
+
+      hotspotLayer.querySelectorAll(".hotspot-trigger").forEach((trigger) => {
+        trigger.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const hotspot = trigger.closest(".hotspot");
+          const willOpen = !hotspot.classList.contains("open");
+          closeAllHotspots();
+          if (willOpen) {
+            hotspot.classList.add("open");
+            trigger.setAttribute("aria-expanded", "true");
+          }
+        });
+      });
+    }
+
+    function openStudio() {
+      if (!luckyManStudio) return;
+      const tileEl = document.getElementById("studio-tile");
+      const photoImg = tileEl && tileEl.querySelector(".tile-photo");
+      const photoSrc = photoImg ? photoImg.src : null;
+
+      studioEyebrow.textContent = department.name;
+      studioName.textContent = luckyManStudio.name;
+      studioTagline.textContent = "Tap the markers to explore";
+      closeAllHotspots();
+
+      // Paint the real photo + hotspots into the still-hidden overlay before
+      // the pop-out even starts (same trick as openPreview) — the tile's
+      // photo is the same file, already cached, so by the time the clone
+      // lands this is ready and the hand-off is seamless.
+      studioPhoto.src = luckyManStudio.image || "";
+      if (studioPhoto.complete) layoutStudioFrame();
+      renderHotspots(luckyManStudio);
+
+      const reveal = () => {
+        studioViewEl.style.transition = "none";
+        studioViewEl.classList.add("active");
+        void studioViewEl.offsetWidth;
+        studioViewEl.style.transition = "";
+      };
+
+      if (tileEl && !prefersReducedMotion()) {
+        const fromRect = tileEl.getBoundingClientRect();
+        const toRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+        flipFly(fromRect, toRect, photoSrc, luckyManStudio.theme, reveal);
+      } else {
+        reveal();
+      }
+    }
+
+    function closeStudio() {
+      if (!studioViewEl.classList.contains("active")) return;
+      closeAllHotspots();
+      const tileEl = document.getElementById("studio-tile");
+      const photoSrc = studioPhoto.getAttribute("src");
+
+      if (tileEl && !prefersReducedMotion()) {
+        setTimeout(() => {
+          const fromRect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+          const toRect = tileEl.getBoundingClientRect();
+          flipFly(fromRect, toRect, photoSrc, luckyManStudio && luckyManStudio.theme, () => {});
+          studioViewEl.classList.remove("active");
+        }, 150);
+      } else {
+        studioViewEl.classList.remove("active");
+      }
+    }
+
+    studioPhoto.addEventListener("load", layoutStudioFrame);
+    // Tapping the photo itself (not a marker) closes whatever hotspot is open.
+    studioFrame.addEventListener("click", closeAllHotspots);
+    document.getElementById("studio-close").addEventListener("click", closeStudio);
+
     // -------------------------------------------------------------- render area (media-led)
 
     function showArea(id) {
@@ -552,6 +739,7 @@
     document.getElementById("back-to-hub").addEventListener("click", () => setActiveView("hub"));
     document.getElementById("brand-home").addEventListener("click", () => {
       closePreview();
+      closeStudio();
       closeLightbox();
       setActiveView("hub");
     });
@@ -593,6 +781,9 @@
         if (a.hero) pool.push({ src: a.hero, theme: a.theme });
         (a.photos || []).forEach((src) => pool.push({ src, theme: a.theme }));
       });
+      if (luckyManStudio && luckyManStudio.image) {
+        pool.push({ src: luckyManStudio.image, theme: luckyManStudio.theme || "#0b2341" });
+      }
       return pool;
     }
 
@@ -677,6 +868,7 @@
       setActiveView("hub");
       closeLightbox();
       closePreview();
+      closeStudio();
       attractEl.classList.add("active");
       startAttractWall();
       startCaptionRotation();

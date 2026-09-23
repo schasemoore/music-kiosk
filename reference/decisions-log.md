@@ -166,6 +166,107 @@ instead of trusting their resize endpoint. If you pull more photos from
 this site later, check each one visually before committing — don't assume
 a 200 response means a good image.
 
+## Lucky Man Studio tile — a 9th tile that isn't a 9th "area"
+
+User asked for a Lucky Man Studio section that's "unlike any other section"
+— tapping it should open straight to a full photo of the studio with
+tappable hotspots (equipment call-outs), not the usual
+carousel/facts/Apply-button flow every area tile uses. A few implementation
+calls worth recording:
+
+- **Separate top-level `luckyManStudio` field, not a 9th `areas[]` entry.**
+  Decap's `list` widget applies the same field set to every item, so adding
+  `hotspots`/an open-flow-type flag to `areas[]` would've put an unused
+  "Hotspots" list and other irrelevant fields on all 8 real areas' CMS forms.
+  A dedicated top-level object gets its own clean CMS section instead. Cost:
+  it doesn't participate in `areas[]`'s drag-to-reorder — it always renders
+  as the last tile appended to the wall. Nobody's asked for it to be
+  reorderable relative to the 8 areas; revisit if that changes.
+- **Reused one of the 8 official colors (Auburn Blue) rather than adding a
+  9th.** Flagged as the right call to make, not just defaulted into, by the
+  "Colors are exactly Auburn's 8" decision above, which literally
+  anticipated this exact situation ("reassign one of the 8 or ask the user
+  which existing area should share"). Auburn Blue already belongs to Music
+  Education; it's a CMS `select` field either way, so easy to change later.
+- **Hotspot position is a numeric % field, not a click-to-place picker.**
+  Decap doesn't ship a visual position-picker widget, and building a custom
+  one means a compiled Preact/React control bundle — real scope, and out of
+  step with this project's plain-JS/no-build-step constraint for what the
+  user actually asked for (color customization + WYSIWYG body text, both of
+  which Decap's stock widgets already cover). Staff eyeball the position as
+  a 0-100 percentage and adjust by checking the kiosk. Revisit only if this
+  turns out to be too fiddly in practice.
+- **Hotspot body is Markdown, not raw HTML in content.json.** Decap's
+  "markdown" widget (the WYSIWYG editor the user asked for) stores markdown
+  source, not HTML — `js/app.js`'s `renderRichText()` is a small
+  escape-first, then-reintroduce-bold/italic/links converter, not a full
+  markdown library (no build step to pull one in via). Keeps hand-editing
+  `content.json` directly safe and consistent with the CMS output, and
+  avoids trusting raw HTML strings from a JSON file.
+- **Default studio photo**: reused the existing Lucky Man Studio
+  control-room shot already in the repo (`composition-technology`'s
+  `2.jpg`, see the Box archive entry below), copied to its own
+  `assets/images/lucky-man-studio/studio.jpg` — not moved, so
+  `composition-technology` keeps its own copy untouched. Default hotspots
+  (studio monitors, mixing console, synth, outboard gear rack) were placed
+  by eye against that specific photo; if the photo is ever swapped via the
+  CMS, the hotspot positions will need re-checking against the new image.
+
+## Lucky Man Studio hotspots — follow-up pass: all-blue markers, backdrop card, real gear copy
+
+Three changes after the initial build, in one pass:
+
+- **All hotspot markers are Auburn Blue.** Initially each of the 4 default
+  hotspots used a different one of the 8 official colors (varied per
+  marker, echoing how each area tile gets its own color). User asked to
+  make them all blue instead — a content/consistency call, not a technical
+  one; the per-hotspot `color` CMS field is untouched, so any individual
+  marker can still be set to a different color later if a program ever
+  wants one to stand out.
+- **Hotspot callouts got a translucent backdrop card**
+  (`.callout-card` in `css/styles.css`) instead of relying on text-shadow
+  alone for legibility. The line, title, and body all now sit inside one
+  `rgba(6,16,33,.82)` rounded panel with `backdrop-filter: blur`. This is a
+  deliberate departure from this app's usual "gradient scrim, never a solid
+  box" rule for text-on-photo (`reference/design-system.md`'s
+  "Scrim-for-legibility") — that rule is built for a full-width edge scrim
+  (tile/hero text anchored to one edge); a hotspot callout can land
+  anywhere in the middle of the photo over unpredictable content (a bright
+  monitor, a cluttered rack), where a bounded card reads more reliably than
+  a directional gradient would. Don't take this as license to add solid
+  boxes elsewhere — it's specific to floating, arbitrarily-positioned
+  callouts, not the app's general text-over-photo pattern.
+- **Default hotspot copy was rewritten from the real
+  [luckymanstudio.com](https://luckymanstudio.com) gear list** (its
+  `/studio/` page has a full equipment inventory: mics, preamps, outboard,
+  monitors, synths, etc.), not generic placeholder text. Specific calls:
+  - **ATC SCM45** monitors — the site explicitly lists "ATC SCM 45 L, C, R
+    monitors," and the photographed speaker (twin woofers flanking a
+    coaxial tweeter/mid, horizontal orientation) matches an ATC center-
+    channel design. Named with confidence.
+  - **Arturia PolyBrute** — the site lists two PolyBrutes as the studio's
+    only analog synth keyboards (Waldorf Iridium and Yamaha Montage are
+    digital/hybrid). The photographed synth's dense knob/slider matrix and
+    wood end-cheeks are consistent with it, so it's named directly.
+  - **Mixing console** — deliberately kept generic ("hands-on console
+    time... patched into the studio's outboard chain") rather than naming
+    a specific console model. The compact control surface in the photo
+    doesn't clearly match any single board on the site's gear list (which
+    focuses on outboard/mic pres rather than naming a console model), and
+    the room in the photo may not even be the flagship "Studio 1" the
+    website describes in detail — better to describe the real workflow
+    (patched into real Neve/SSL/API-style outboard, all genuinely on the
+    gear list) than guess a model from a blurry photo.
+  - **Outboard rack** — called out as including "vintage-style tube
+    compressors modeled on the... Fairchild 670" rather than naming the
+    exact rack unit, since the site lists a **Stam Audio 670** (an
+    explicit Fairchild 670 recreation) and the photographed unit's twin
+    large VU meters on a light faceplate are visually consistent with
+    that style of compressor — accurate about the *kind* of gear without
+    overclaiming a pixel-level ID on a low-res photo.
+  If the studio photo is ever swapped, re-verify these against whatever
+  equipment is actually visible — don't just carry the copy forward.
+
 ## Second archive pass — every area now has a full 3-photo set, all from Box
 
 Follow-up to the pass above. Every area's gallery previously had `1.jpg`

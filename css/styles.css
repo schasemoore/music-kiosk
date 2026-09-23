@@ -924,6 +924,242 @@ img {
   pointer-events: none;
 }
 
+/* ---------------------------------- Lucky Man Studio: full photo + hotspots ---------------------------------- */
+/* Unlike the tile-preview pop-out above, this surface has no carousel, facts
+   list, or Apply button — just the studio photo, letterboxed (never
+   cropped) inside .studio-frame, with tappable markers over real equipment.
+   Reuses the same FLIP pop-out mechanism (flipFly) as .preview-modal; see
+   openStudio/closeStudio in js/app.js. */
+
+.studio-view {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: var(--navy-deep);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.studio-view.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.studio-label {
+  position: absolute;
+  left: 32px;
+  top: 28px;
+  z-index: 5;
+  max-width: 420px;
+  padding: 16px 20px;
+  background: rgba(6, 16, 33, 0.6);
+  backdrop-filter: blur(2px);
+  border-radius: var(--radius-md);
+  color: var(--paper);
+}
+
+.studio-label .preview-eyebrow {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.studio-label h2 {
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.studio-label .tagline {
+  font-size: 13px;
+  color: rgba(251, 248, 242, 0.75);
+  margin: 6px 0 0;
+}
+
+/* Sized to exactly match the photo's own aspect ratio (set from JS once the
+   image loads) so it letterboxes like object-fit:contain — but stays a real
+   box, so hotspots can be positioned against it with plain left/top
+   percentages. object-fit:cover alone can't do that: the visible crop
+   shifts with viewport size, so a fixed % would drift off the equipment it's
+   meant to point at. */
+.studio-frame {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.studio-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hotspot-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.hotspot {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 2;
+}
+
+.hotspot.open {
+  z-index: 3;
+}
+
+.hotspot-trigger {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hotspot-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--hc, var(--navy));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 2px 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.25s ease;
+}
+
+.hotspot.open .hotspot-dot {
+  transform: scale(1.15);
+}
+
+/* The "stroke" — a plain white ring around the dot, pulsing outward on a
+   loop so a first-time visitor clocks it as tappable without a text label. */
+.hotspot-ring {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  animation: hotspot-pulse 2.2s ease-out infinite;
+}
+
+@keyframes hotspot-pulse {
+  0% { transform: scale(0.7); opacity: 0.9; }
+  70% { opacity: 0; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+
+.hotspot.open .hotspot-ring {
+  animation: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* On open, the ring's job is done and .callout-line takes over inside the
+   card as "the stroke, expanded into a line" — title above it, body below.
+   The card is a translucent backdrop (not just a text-shadow) so the callout
+   stays readable over any part of the photo, busy equipment included; .flip
+   mirrors everything for hotspots near the right edge so it never runs off
+   the frame. */
+.hotspot-callout {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(0, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.hotspot.flip .hotspot-callout {
+  left: auto;
+  right: 0;
+  align-items: flex-end;
+}
+
+.callout-card {
+  width: 250px;
+  max-width: 62vw;
+  margin-left: 22px;
+  padding: 14px 18px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(6, 16, 33, 0.82);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.hotspot.flip .callout-card {
+  margin-left: 0;
+  margin-right: 22px;
+  text-align: right;
+}
+
+.hotspot.open .callout-card {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.callout-title {
+  font-family: "sweet-sans-pro", "Segoe UI", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--paper);
+}
+
+.callout-line {
+  display: block;
+  width: 0;
+  height: 2px;
+  margin: 10px 0;
+  background: var(--hc, var(--navy));
+  transition: width 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) 0.05s;
+}
+
+.hotspot.open .callout-line {
+  width: 100%;
+}
+
+.hotspot.flip .callout-line {
+  margin-left: auto;
+}
+
+.callout-body {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: rgba(251, 248, 242, 0.92);
+}
+
+.callout-body p {
+  margin: 0 0 8px;
+}
+
+.callout-body p:last-child {
+  margin-bottom: 0;
+}
+
+.callout-body a {
+  color: var(--paper);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hotspot-ring { animation: none; opacity: 0.85; }
+}
+
 /* ---------------------------------- Attract / idle: cinematic panel wall ---------------------------------- */
 /* Several panels animate independently at once (own crossfade timers, own
    Ken Burns drift) instead of one full-screen slide at a time — meant to

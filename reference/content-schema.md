@@ -103,6 +103,50 @@ folders; dropping a file at the referenced path is enough, and removing a
 `hero`/`photos`/`video` field (or leaving it unset) is equally safe — it
 just falls back further down the chain (hero → first photo → gradient).
 
+## `luckyManStudio` (top-level, not part of `areas[]`)
+
+```json
+{
+  "name": "Lucky Man Studio",
+  "tagline": "Auburn's professional recording & production space",
+  "size": "normal",                                  // "normal" or "large", same as an area — see "Hub wall layout" above
+  "theme": "#0b2341",                                 // Must be one of Auburn's 8 official colors, same rule as areas
+  "image": "assets/images/lucky-man-studio/studio.jpg",
+  "hotspots": [
+    {
+      "x": 91,                                        // 0-100, % across the photo (0 = left edge, 100 = right edge)
+      "y": 20,                                        // 0-100, % down the photo (0 = top edge, 100 = bottom edge)
+      "color": "#0b2341",                             // One of Auburn's 8 official colors — the marker's dot/line color
+      "title": "Studio Monitors",
+      "body": "Near-field **studio monitors** give students..." // Markdown (bold/italic/links), not HTML — see below
+    }
+  ]
+}
+```
+
+A single object, not a list — there's only one studio. It still renders as a
+tile in `.stage` (appended after the 8 `areas[]` tiles, same `.area-tile`
+markup, same `size`/`theme` rules), but tapping it is a completely different
+flow from every area: no carousel, no facts list, no Apply button. It pops
+(same FLIP mechanism, `openStudio`/`closeStudio` in `js/app.js`) straight to
+the full photo with tappable hotspot markers over real equipment. See
+`reference/design-system.md`'s "Lucky Man Studio" section for how the
+photo-frame sizing and hotspot markers work, and
+`reference/decisions-log.md` for why this is a separate top-level field
+instead of a 9th `areas[]` entry.
+
+**Hotspot `x`/`y` have no visual picker** — there's no way to click-to-place
+a hotspot in the CMS, only numeric percentage fields. Open the photo, eyeball
+the position, save, and check the kiosk (or the browser at `/`); adjust the
+number and repeat. This was a deliberate scope call, not an oversight — see
+`reference/decisions-log.md`.
+
+**`body` is Markdown, not HTML** — written through Decap's WYSIWYG markdown
+editor in the CMS (bold/italic/links only; anything fancier won't render).
+`js/app.js`'s `renderRichText()` converts it to HTML client-side and escapes
+everything else, so don't hand-write HTML tags into this field even when
+editing `content.json` directly — they'll show up as literal text.
+
 ## Editing without the CMS
 
 Just hand-edit `data/content.json` — it's plain JSON, no build step re-reads

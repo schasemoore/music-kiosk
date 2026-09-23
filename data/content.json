@@ -140,5 +140,42 @@
       "poster": "assets/images/areas/music-education/poster.jpg",
       "previewPlayback": "photo"
     }
-  ]
+  ],
+  "luckyManStudio": {
+    "name": "Lucky Man Studio",
+    "tagline": "Auburn's professional recording & production space",
+    "size": "normal",
+    "theme": "#0b2341",
+    "image": "assets/images/lucky-man-studio/studio.jpg",
+    "hotspots": [
+      {
+        "x": 91,
+        "y": 20,
+        "color": "#0b2341",
+        "title": "ATC Monitors",
+        "body": "The room is monitored on **ATC SCM45** left/center/right reference monitors — the same uncolored, trusted-in-professional-rooms standard used across the industry."
+      },
+      {
+        "x": 68,
+        "y": 58,
+        "color": "#0b2341",
+        "title": "Mixing Console",
+        "body": "Hands-on console time, patched straight into the studio's outboard chain of vintage-style Neve, SSL, and API-style processing — students learn the workflow the way working engineers do."
+      },
+      {
+        "x": 64,
+        "y": 84,
+        "color": "#0b2341",
+        "title": "Arturia PolyBrute",
+        "body": "One of the studio's **Arturia PolyBrute** analog synthesizers, alongside a Waldorf Iridium and Yamaha Montage — hands-on sound design for composition and production students."
+      },
+      {
+        "x": 7,
+        "y": 46,
+        "color": "#0b2341",
+        "title": "Outboard Gear",
+        "body": "A rack of outboard processors, including vintage-style tube compressors modeled on the legendary Fairchild 670 — patched in for tracking and mixing sessions."
+      }
+    ]
+  }
 }

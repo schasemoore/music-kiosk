@@ -139,6 +139,55 @@ timer). This is handled entirely inside `renderPreviewCarousel`, not the
 FLIP mechanism above — the pop-out animation itself doesn't know or care
 what mode an area is in.
 
+## Lucky Man Studio: full photo + hotspots
+
+One special hub tile (`reference/content-schema.md`'s `luckyManStudio`) that
+breaks from every other tile's flow on purpose — tapping it doesn't open the
+carousel/facts/Apply preview, it pops (same FLIP mechanism as the tile
+preview) straight to a full, never-cropped picture of the studio with
+tappable markers over real equipment.
+
+**Letterboxed, not cropped**: `#studio-frame` gets its `aspect-ratio` set
+from JS (`layoutStudioFrame` in `js/app.js`) to match the photo's own
+natural dimensions, then sizes itself via `max-width/max-height: 100%`
+inside a flex-centered `#studio-view` — this reproduces `object-fit: contain`
+letterboxing while staying a real box. That matters because hotspots are
+positioned with plain `left`/`top` percentages against that box: with
+`object-fit: cover` instead, the visible crop shifts with viewport size and
+a fixed percentage would drift off the equipment it's meant to point at.
+
+**Hotspot marker, two states** (`.hotspot`, `css/styles.css` — see the
+"Lucky Man Studio" section):
+- **Closed** (default): a small filled dot in the hotspot's own color
+  (`--hc`, one of Auburn's 8 colors) with a white ring around it that
+  continuously pulses outward (`@keyframes hotspot-pulse`) — the "this is
+  tappable" signal, since nothing else marks it as interactive.
+- **Open**: the ring fades out and a separate line element (`.callout-line`)
+  grows outward from the dot instead — visually reads as "the stroke
+  expands into a line," even though it's two different elements crossfading
+  at the same point rather than one element literally morphing, which is
+  the more reliable way to get a clean circle→line transition across
+  browsers. The line, title, and body all live inside `.callout-card` — a
+  translucent, rounded, blurred-backdrop panel (`rgba(6,16,33,.82)` +
+  `backdrop-filter: blur`), not just text-shadow — so the callout stays
+  readable no matter what's behind it in the photo (a bright monitor, a
+  cluttered rack, anything). Only one hotspot stays open at a time —
+  opening another closes whatever was open, and tapping the photo itself
+  closes the open one.
+- **Edge case — `.flip`**: a hotspot past 62% across the photo gets a
+  `.flip` class (set in `renderHotspots`) that mirrors the whole callout to
+  grow leftward and right-align its card instead, so it doesn't run off the
+  edge of the frame.
+
+**Color**: both the tile's own `theme` and each hotspot's `color` are Auburn
+8-color `select` fields in the CMS, same rule as everywhere else in this
+app (`reference/decisions-log.md` — no new hex values). Every hotspot
+currently uses Auburn Blue (the tile's own color too) — a content choice for
+visual consistency across markers, not a technical constraint; the `color`
+field is still there per-hotspot if a future one should stand out. See
+`reference/decisions-log.md` for why the tile itself reuses Music
+Education's color instead of a 9th hex.
+
 ## Attract screen: multi-panel wall (v4)
 
 `#splash-slideshow` holds several `.attract-panel` elements (positioned via

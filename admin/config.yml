@@ -150,3 +150,39 @@ collections:
                   - { label: "Slideshow (auto-advances through photos/video)", value: "slideshow" }
                 default: "photo"
                 hint: "Controls what happens when a visitor taps this tile and it pops out full-screen. \"Video\" falls back to Photo if no video is set above."
+
+          - label: "Lucky Man Studio"
+            name: "luckyManStudio"
+            widget: "object"
+            hint: "A separate, one-off home screen tile. Unlike the areas above, tapping it opens straight to a full picture of the studio with tappable hotspots — there's no carousel, facts list, or Apply button here."
+            fields:
+              - { label: "Tile name", name: "name", widget: "string", default: "Lucky Man Studio" }
+              - { label: "Tile tagline", name: "tagline", widget: "string" }
+              - label: "Home screen tile size"
+                name: "size"
+                widget: "select"
+                options:
+                  - { label: "Normal", value: "normal" }
+                  - { label: "Large (flagship)", value: "large" }
+                default: "normal"
+              - label: "Tile color"
+                name: "theme"
+                widget: "select"
+                options: *auburn-colors
+                hint: "Pick one of Auburn's 8 official brand colors — don't introduce new ones. Also sets the default hotspot marker color below."
+              - { label: "Studio photo (shown full-screen when the tile is tapped)", name: "image", widget: "image" }
+              - label: "Hotspots"
+                name: "hotspots"
+                widget: "list"
+                summary: "{{title}}"
+                hint: "Tappable markers over the studio photo, one per piece of equipment or point of interest. Position is set as a percentage of the photo (0,0 = top-left corner, 100,100 = bottom-right) — open the photo, estimate where the spot is, and adjust the number until it lines up."
+                fields:
+                  - { label: "Horizontal position % (0 = left edge, 100 = right edge)", name: "x", widget: "number", value_type: "float", min: 0, max: 100 }
+                  - { label: "Vertical position % (0 = top edge, 100 = bottom edge)", name: "y", widget: "number", value_type: "float", min: 0, max: 100 }
+                  - label: "Marker color"
+                    name: "color"
+                    widget: "select"
+                    options: *auburn-colors
+                    default: "#0b2341"
+                  - { label: "Title", name: "title", widget: "string" }
+                  - { label: "Body", name: "body", widget: "markdown", hint: "Bold, italic, and links are supported." }

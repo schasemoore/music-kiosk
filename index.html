@@ -82,6 +82,26 @@
       </div>
     </div>
 
+    <!-- Lucky Man Studio: unlike every other tile, this one pops out to a
+         full picture of the studio with tappable hotspots instead of the
+         usual carousel/facts/Apply flow (see openStudio in js/app.js). Uses
+         the same FLIP pop-out mechanism as .preview-modal, just a different
+         reveal. -->
+    <div class="studio-view" id="studio-view">
+      <button class="preview-close" id="studio-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="studio-label">
+        <div class="preview-eyebrow" id="studio-eyebrow"></div>
+        <h2 id="studio-name"></h2>
+        <p class="tagline" id="studio-tagline">Tap the markers to explore</p>
+      </div>
+      <div class="studio-frame" id="studio-frame">
+        <img class="studio-photo" id="studio-photo" alt="">
+        <div class="hotspot-layer" id="hotspot-layer"></div>
+      </div>
+    </div>
+
   </div>
 
   <script src="js/vendor/qrcode.js"></script>
